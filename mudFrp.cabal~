@@ -21,7 +21,7 @@ executable mudFrp
     if flag(threaded)
         buildable: True
         ghc-options: -threaded
-    main-is: Main.hs
+    main-is: hello.hs
     buildable: True
     hs-source-dirs: src
     other-modules: Paths_mudFrp Paths
