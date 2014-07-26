@@ -1,24 +1,24 @@
 {-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
 
-import Graphics.UI.WX hiding (Event)
-import Graphics.UI.WXCore as WXCore
-import Reactive.Banana
-import Reactive.Banana.WX
+import Graphics.UI.WX as WX
+import Graphics.UI.WXCore as WXCore hiding (Event)
+import Reactive.Banana as RB
+import Reactive.Banana.WX   hiding (newEvent)
 import System.Random
-
+--import Graphics.UI.WXContrib.WXDiffCtrl
+import Graphics.UI.WX.Classes
 import Paths (getDataFile)
-
+import WxAdditions
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
 -- constants
-height, width, blockSize :: Int
+gridHeight, gridWidth, blockSize :: Int
 blockSize = 40 -- blockSize is 40x40
-height   = 640 -- window height
-width    = 640 -- window width
-
-chance   :: Double
-chance   = 0.1
+gridHeight   = 430 -- window height
+gridWidth    = 430 -- window width
+blocksHorizontal = gridWidth `div` blockSize
+blocksVertical = gridHeight `div` blockSize
 
 square, selectedSquare :: Bitmap ()
 square    = bitmap $ getDataFile "square.png"
@@ -27,15 +27,19 @@ selectedSquare    = bitmap $ getDataFile "selectedSquare.png"
 main :: IO ()
 main = start mudEditor
 
+whatDiffer :: FilePath -> FilePath -> IO [String]
+whatDiffer fp1 fp2 = return ["testing123","test456"]
+
 {-----------------------------------------------------------------------------
     Game Logic
 ------------------------------------------------------------------------------}
 -- main game function
 mudEditor :: IO ()
 mudEditor = do
-    ff <- frame [ text       := "MUD Editor"
+    ff <- frame [ text       := "Editor for the Functional Interactive Fiction Engine (E-FIFE)"
                 , bgcolor    := white
-                , resizeable := False ]
+                , resizeable := False]
+
 
     status <- statusField [text := "Loading MUD Editor"]
     set ff [statusBar := [status]]
@@ -50,7 +54,7 @@ mudEditor = do
                            ]
     menuLine game
     quit  <- menuQuit game [help := "Quit the game"]
-	
+
     set new   [on command := mudEditor]
     set pause [on command := set t [enabled :~ not]]
     set quit  [on command := close ff]
@@ -58,25 +62,63 @@ mudEditor = do
     set ff [menuBar := [game]]
 
     pp <- panel ff []
-    set ff [ layout  := minsize (sz width height) $ widget pp ]
-    set pp [ on (charKey '-') := set t [interval :~ \i -> i * 2] -- slow down timer interval
+ --   cmb <- comboBox ff [items := ["item1","item2"]]
+    styledTxt <- styledTextCtrl ff []
+    --diffV <- diffViewer ff [diffFiles := ("/home/cvanvranken/Desktop/unt1","/home/cvanvranken/Desktop/unt2")]
+    diffGo <- button ff [text := "Diff Files"]
+
+    let
+      row1Layout = minsize (sz gridWidth gridHeight) $ widget pp
+      columnLayout = column 10 [row1Layout,widget diffGo, minsize (sz 400 400) $ widget styledTxt]
+     --   minsize (sz 600 400) $ wxhaskell setwidget diffV,widget diffGo]
+
+
+    set ff [ layout  :=  margin 10 columnLayout]
+    set pp [on (charKey '-') := set t [interval :~ \i -> i * 2] -- slow down timer interval
            , on (charKey '+') := set t [interval :~ \i -> max 10 (div i 2)] -- speed up timer interval
            ]
-
+-- reactimate :: Frameworks t => Event t (IO ()) -> Moment t ()
+-- styledTextCtrlSetText :: forall a. StyledTextCtrl a -> String -> IO ()
     -- event network
     let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
             -- timer
             etick  <- event0 t command
 
+            -- diffButton event
+            eDiffGo :: RB.Event t ()  <- event0 diffGo command
+       --     eInt :: Reactive.Banana.Event t Int <- 1 <$ eDiffGo
+            bStyle :: Behavior t Bool <- behavior pp tabTraversal
+
+
+
+            let
+                eStyle :: RB.Event t Bool = bStyle <@ eDiffGo
+                eStringStyle :: RB.Event t String = show <$> eStyle
+                setStyleText :: String -> IO () =(styledTextCtrlAddText styledTxt)
+
+
+          --       executeDiff = Just whatDiffer
+          --  sink diffV [diffFn :== stepper executeDiff (executeDiff <$ eDiffGo)]
+         --   reactimate $ setStyleText <$> eStringStyle
+
+            reactimate $ setStyleText <$> eStringStyle
+
+            -- navi events
+            eNavi <- event1 pp keyOnDownEvent
+            reactimate $ (styledTextCtrlAddText styledTxt "Navi!\n") <$ eNavi
+
             -- keyboard events
-            ekey   <- event1 pp keyboard
+            ekey   <- event1 pp keyOnDownEvent
             let eKeyLeft  = filterE ((== KeyLeft ) . keyKey) ekey
                 eKeyRight = filterE ((== KeyRight) . keyKey) ekey
                 eKeyUp = filterE (\evK ->  ((keyKey evK)== KeyUp) ) ekey
                 eKeyDown = filterE ((== KeyDown) . keyKey) ekey
 
+            reactimate ((panelSetFocus pp) <$ eKeyDown)
+
             -- mouse events
+
             emouse <- event1 pp mouse
             let checkMouseLeftDown :: EventMouse -> Bool
                 checkMouseLeftDown (MouseLeftDown _ _)  = True
@@ -89,18 +131,18 @@ mudEditor = do
             let
                 bActiveBlock :: Behavior t BlockPosition
                 bActiveBlock = accumB (0,0) $
-                    (moveLeft <$ eKeyLeft) `union` (moveRight <$ eKeyRight)
-                    `union` (moveUp <$ eKeyUp) `union` (moveDown <$ eKeyDown)
+                    unions [moveLeft <$ eKeyLeft, moveRight <$ eKeyRight,
+                    moveUp <$ eKeyUp,moveDown <$ eKeyDown]
 
                 moveLeft  (x,y) = (0 `max` (x - 1),y)
-                moveRight (x,y) = ( (width `div` blockSize) `min` (x + 1),y)
+                moveRight (x,y) = ( blocksHorizontal `min` (x + 1),y)
                 moveUp  (x,y) = (x,0 `max` (y - 1))
-                moveDown (x,y) = (x,(height `div` blockSize) `min` (y + 1))
+                moveDown (x,y) = (x,blocksVertical `min` (y + 1))
 
             -- toggle block draw
             let
                 bBlockMap :: Behavior t BlockMap
-                bBlockMap = accumB [((x,y),True) | x <- [0..16], y <- [0..16]] $
+                bBlockMap = accumB [((x,y),True) | x <- [0..blocksHorizontal], y <- [0..blocksVertical]] $
                     (toggleBlockMap <$> eClickLeft)
 
                 toggleBlockMap :: EventMouse -> BlockMap -> BlockMap
@@ -141,7 +183,7 @@ drawnBlockLocations  :: BlockMap -> [BlockPosition]
 drawnBlockLocations bm = fst `map` (snd `filter` bm)
 
 validBlockLocations :: [[Position]]
-validBlockLocations = [[ (point i j) | i <- [1,blockSize..height]] | j <- [1,blockSize..width]]
+validBlockLocations = [[ (point i j) | i <- [1,blockSize..gridHeight]] | j <- [1,blockSize..gridWidth]]
 
 
 getBlockLoc :: BlockPosition -> Position
@@ -160,3 +202,6 @@ drawBlock :: DC a -> BlockPosition -> BlockPosition -> IO ()
 drawBlock dc activePos drawPos  =
   drawBitmap dc squareImage (getBlockLoc drawPos) True []
   where squareImage = if activePos == drawPos then selectedSquare else square
+
+
+
