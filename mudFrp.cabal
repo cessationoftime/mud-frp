@@ -24,5 +24,6 @@ executable mudFrp
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
-    other-modules: WxAdditions Paths_mudFrp Paths
+    other-modules: Controls.Mud.MapEditor SourceEditor WxAdditions
+                   Paths_mudFrp Paths
  
