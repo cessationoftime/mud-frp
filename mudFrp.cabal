@@ -1,6 +1,6 @@
 name: mudFrp
 version: 1.0.0.2
-cabal-version: >=1.6
+cabal-version: >=1.18
 build-type: Simple
 license: BSD3
 license-file: LICENSE
@@ -12,11 +12,12 @@ flag threaded
     Default: False
  
 executable mudFrp
+    default-language: Haskell2010
     build-depends: executable-path >=0.0.3 && <0.1,
                    filepath >=1.3.0.1 && <1.4, wx ==0.90.1.0, wxcore ==0.90.1.1,
                    reactive-banana >=0.8.0.0 && <0.9,
                    reactive-banana-wx >=0.8.0.0 && <0.9, random >=1.0.1.1 && <1.1,
-                   base >=4.2 && <5, WXDiffCtrl -any
+                   base >=4.2 && <5
      
     if flag(threaded)
         buildable: True

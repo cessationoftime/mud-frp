@@ -20,7 +20,6 @@ import Graphics.UI.WXCore as WXCore hiding (Event)
 import Reactive.Banana as RB
 import Reactive.Banana.WX   hiding (newEvent)
 import System.Random
-import Graphics.UI.WXContrib.WXDiffCtrl
 import Graphics.UI.WX.Classes
 import Paths (getDataFile)
 import WxAdditions
@@ -76,54 +75,53 @@ mapEditorIO window = do
 -- Events and Behaviors
   let mapEditorEventNetwork :: forall t. Frameworks t => Moment t ()
       mapEditorEventNetwork = do
+        ekey   <- event1 pp keyOnDownEvent
+        emouse <- event1 pp mouse
+     -- timer
+        etick  <- event0 t command
 
-      ekey   <- event1 pp keyOnDownEvent
-      emouse <- event1 pp mouse
-   -- timer
-      etick  <- event0 t command
+        let eKeyLeft  = filterE ((== KeyLeft ) . keyKey) ekey
+            eKeyRight = filterE ((== KeyRight) . keyKey) ekey
+            eKeyUp = filterE (\evK ->  ((keyKey evK)== KeyUp) ) ekey
+            eKeyDown = filterE ((== KeyDown) . keyKey) ekey
 
-      let eKeyLeft  = filterE ((== KeyLeft ) . keyKey) ekey
-          eKeyRight = filterE ((== KeyRight) . keyKey) ekey
-          eKeyUp = filterE (\evK ->  ((keyKey evK)== KeyUp) ) ekey
-          eKeyDown = filterE ((== KeyDown) . keyKey) ekey
+            moveLeft  (x,y) = (0 `max` (x - 1),y)
+            moveRight (x,y) = ( blocksHorizontal `min` (x + 1),y)
+            moveUp  (x,y) = (x,0 `max` (y - 1))
+            moveDown (x,y) = (x,blocksVertical `min` (y + 1))
 
-          moveLeft  (x,y) = (0 `max` (x - 1),y)
-          moveRight (x,y) = ( blocksHorizontal `min` (x + 1),y)
-          moveUp  (x,y) = (x,0 `max` (y - 1))
-          moveDown (x,y) = (x,blocksVertical `min` (y + 1))
-
-          bActiveBlock :: Behavior t BlockPosition
-          bActiveBlock = accumB (0,0) $
+            bActiveBlock :: Behavior t BlockPosition
+            bActiveBlock = accumB (0,0) $
                          unions [moveLeft <$ eKeyLeft, moveRight <$ eKeyRight, moveUp <$ eKeyUp,moveDown <$ eKeyDown]
 
-         -- mouse events
-          checkMouseLeftDown :: EventMouse -> Bool
-          checkMouseLeftDown (MouseLeftDown _ _)  = True
-          checkMouseLeftDown _ = False
+           -- mouse events
+            checkMouseLeftDown :: EventMouse -> Bool
+            checkMouseLeftDown (MouseLeftDown _ _)  = True
+            checkMouseLeftDown _ = False
 
-          eClickLeft  = filterE checkMouseLeftDown emouse
+            eClickLeft  = filterE checkMouseLeftDown emouse
 
-       -- toggle block draw
-          bBlockMap :: Behavior t BlockMap
-          bBlockMap = accumB [((x,y),True) | x <- [0..blocksHorizontal], y <- [0..blocksVertical]] $
-              (toggleBlockMap <$> eClickLeft)
+         -- toggle block draw
+            bBlockMap :: Behavior t BlockMap
+            bBlockMap = accumB [((x,y),True) | x <- [0..blocksHorizontal], y <- [0..blocksVertical]] $
+                (toggleBlockMap <$> eClickLeft)
 
-          toggleBlockMap :: EventMouse -> BlockMap -> BlockMap
-          toggleBlockMap evMouse blockMap = (toggleBlockDrawing $ mousePos evMouse) `map` blockMap
+            toggleBlockMap :: EventMouse -> BlockMap -> BlockMap
+            toggleBlockMap evMouse blockMap = (toggleBlockDrawing $ mousePos evMouse) `map` blockMap
 
-          nearClickPosition :: Position -> Position -> Bool
-          nearClickPosition (Point xBlock yBlock) (Point xClick yClick) =
-            let xMax = xBlock + 30
-                yMax = yBlock + 30
-            in (xClick > xBlock && xClick < xMax) && (yClick > yBlock && yClick < yMax)
+            nearClickPosition :: Position -> Position -> Bool
+            nearClickPosition (Point xBlock yBlock) (Point xClick yClick) =
+              let xMax = xBlock + 30
+                  yMax = yBlock + 30
+              in (xClick > xBlock && xClick < xMax) && (yClick > yBlock && yClick < yMax)
 
-          toggleBlockDrawing :: Position ->(BlockPosition,Bool)-> (BlockPosition,Bool)
-          toggleBlockDrawing clickPos (pos,d) | nearClickPosition (getBlockLoc pos) clickPos  = (pos,not d)
-          toggleBlockDrawing _ x = x
+            toggleBlockDrawing :: Position ->(BlockPosition,Bool)-> (BlockPosition,Bool)
+            toggleBlockDrawing clickPos (pos,d) | nearClickPosition (getBlockLoc pos) clickPos  = (pos,not d)
+            toggleBlockDrawing _ x = x
 
-      -- draw the game state
-      sink pp [on paint :== stepper (\_dc _ -> return ()) $ (drawGameState <$> bActiveBlock <*> bBlockMap) <@ etick]
-      reactimate $ repaint pp <$ etick
+        -- draw the game state
+        sink pp [on paint :== stepper (\_dc _ -> return ()) $ (drawGameState <$> bActiveBlock <*> bBlockMap) <@ etick]
+        reactimate $ repaint pp <$ etick
 
   network <- compile mapEditorEventNetwork
   return (pp,network)
