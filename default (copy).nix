@@ -5,19 +5,17 @@
 let
   pkgs = import <nixpkgs> {};
 in
-{ makeWrapper ? pkgs.makeWrapper, haskellPackages ? pkgs.haskellPackages, 
-  gtk_modules ? [ pkgs.libcanberra ] }: (
+{ fontconfig ? pkgs.fontconfig, makeWrapper ? pkgs.makeWrapper, haskellPackages ? pkgs.haskellPackages, 
+  pkgconfig ? pkgs.pkgconfig, gtkmm ? pkgs.gtkmm, glibmm ? pkgs.glibmm, gtk_modules ? [ pkgs.libcanberra ] }: (
         let
 	  inherit (haskellPackages) cabal cabalInstall_1_18_0_3
 	    executablePath random filepath wx wxcore reactiveBanana reactiveBananaWx;
-
-
 
 	in cabal.mkDerivation (self: {
 	  pname = "mud-frp";
 	  version = "0.1.0.0";
 	  src = ./.;
-	  buildDepends = [ cabalInstall_1_18_0_3 executablePath random filepath wx wxcore reactiveBanana reactiveBananaWx makeWrapper];
+	  buildDepends = [ pkgconfig glibmm gtkmm fontconfig cabalInstall_1_18_0_3 executablePath random filepath wx wxcore reactiveBanana reactiveBananaWx makeWrapper];
 	  buildTools = [ cabalInstall_1_18_0_3 ];
 	  enableSplitObjs = false;
 
@@ -33,15 +31,13 @@ in
 	  LANGUAGE="en_US:en";
           dontStrip=1;
 
-#      doExport2 = ''
-#export PATH="/usr/lib/lightdm/lightdm:${cabalInstall_1_18_0_3}/bin:/usr/bin/X11:$PATH"
-#'';
-
-#--prefix PATH : /usr/lib/lightdm/lightdm:${cabalInstall_1_18_0_3}/bin:/usr/bin/X11
-
+      doExport2 = ''
+export PATH="/usr/lib/lightdm/lightdm:${fontconfig}/bin:${cabalInstall_1_18_0_3}/bin:/usr/bin/X11:$PATH"
+'';
+#--set GTK_MODULES overlay-scrollbar:unity-gtk-module
       postInstall = ''
-        wrapProgram $out/bin/mudFrp --suffix-each GTK_PATH ':' "$gtk_modules"; 
-      '';
+        wrapProgram $out/bin/mudFrp --suffix-each GTK_PATH ':' "$gtk_modules"  --prefix PATH : /usr/lib/lightdm/lightdm:${fontconfig}/bin:${cabalInstall_1_18_0_3}/bin:/usr/bin/X11''; 
+
 	})
 )
 
