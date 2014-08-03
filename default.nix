@@ -4,9 +4,10 @@
 #arguments for the nix expression, syntax is { argname ? defaultvalue, argname ? defaultvalue }
 let
   pkgs = import <nixpkgs> {};
+  unityGtkModule = pkgs.callPackage ./unityGtkModule/saucybin.nix {};
 in
 { makeWrapper ? pkgs.makeWrapper, haskellPackages ? pkgs.haskellPackages, 
-  gtk_modules ? [ pkgs.libcanberra ] }: (
+  gtk_modules ? [ pkgs.libcanberra unityGtkModule ] }: (
         let
 	  inherit (haskellPackages) cabal cabalInstall_1_18_0_3
 	    executablePath random filepath wx wxcore reactiveBanana reactiveBananaWx;
