@@ -16,6 +16,7 @@ import Controls.Mud.MapEditor
 ------------------------------------------------------------------------------}
 -- constants
 
+type EventSource a = (AddHandler a, a -> IO ())
 
 main :: IO ()
 main = start mudEditor
@@ -37,25 +38,31 @@ mudEditor = do
 
    -- t  <- timer ff [ interval   := 50 ]
 
-    game  <- menuPane      [ text := "Game" ]
-    new   <- menuItem game [ text := "&New\tCtrl+N", help := "New game" ]
-    open <- menuItem game [ text      := "&Open\tCtrl+O"
+    fileMenu  <- menuPane      [ text := "File" ]
+    new   <- menuItem fileMenu [ text := "&New\tCtrl+N", help := "New file" ]
+    save   <- menuItem fileMenu [ text := "&Save\tCtrl+S", help := "Save file" ]
+    open <- menuItem fileMenu [ text      := "&Open\tCtrl+O"
                            , help      := "Open file"
                --            , checkable := True
                            ]
-    menuLine game
-    quit  <- menuQuit game [help := "Quit the game"]
+    menuLine fileMenu
+    quit  <- menuQuit fileMenu [help := "Quit the ide"]
 
+
+    (addDialogFinish,handlerDialogFinish) :: EventSource (FileDialog (), Int) <- newAddHandler
+    (addGetDialogFile,handlerGetDialogFile) :: EventSource (FileDialog ()) <- newAddHandler
     set new   [on command := mudEditor]
     set quit  [on command := close ff]
 
 
-    set ff [menuBar := [game]]
+    set ff [menuBar := [fileMenu]]
 
     (mapEditor,mapEditorNetwork) <- mapEditorIO ff
  --   cmb <- comboBox ff [items := ["item1","item2"]]
     sourceEditorCtrl <- sourceEditor ff []
-    set open  [on command :=  (sourceEditorOpenFileDialog ff sourceEditorCtrl  >> return ())]
+    set open  [on command :=  (sourceEditorOpenFileDialog ff (\fd r -> handlerDialogFinish (fd,r)) sourceEditorCtrl)]
+
+   -- set save  [on command :=  (sourceEditorFileSave sourceEditorCtrl  >> return ())]
 
     diffGo <- button ff [text := "Go"]
 
@@ -70,6 +77,36 @@ mudEditor = do
     -- event network
     let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
+            -- save event
+            eSaveButton :: RB.Event t ()  <- event0 save command
+            eOpenButton :: RB.Event t ()  <- event0 open command
+
+            eDialogFinish :: RB.Event t (FileDialog (), Int)  <- fromAddHandler addDialogFinish
+            eGetDialogFile :: RB.Event t FilePath  <- fromAddHandler (fileDialogGetPath `mapIO` addGetDialogFile)
+            let eDialogOk  = filterE (\(_,r) -> r == wxID_OK) eDialogFinish
+                eDialogCancel = filterE (\(_,r) -> r /= wxID_OK) eDialogFinish
+              --  what :: RB.Event t (IO ()) = (\(fd,r) -> handlerGetDialogFile fd) <$> eDialogOk
+
+            reactimate $ (\(fd,r) -> handlerGetDialogFile fd) <$> eDialogOk
+
+            reactimate $ (\fp -> sourceEditorLoadFile sourceEditorCtrl fp >> return ()) <$> eGetDialogFile
+
+
+   --loaded <- fromMaybe (return False) $ sourceEditorLoadFile sourceEditorCtrl <$> mbFilePath
+  --let mb =  (\fp -> (loaded,fp) ) `fmap` mbFilePath
+  --return mb
+
+
+          --  let openFile =
+               -- bActiveFile :: Behavior t (Maybe (Bool,FilePath)) = accumB Nothing $ (openFile <@ eOpenButton)
+            --reactimate $ (sourceEditorOpenFileDialog ff sourceEditorCtrl) <$> eOpenButton
+         --   doActive Nothing = error "user must pick a file to load"
+         --   doActive Just (True, x) = x
+         --   doActive Just (False, x) = error "file failed to load"
+
+
+           -- bOpenFileDialog :: Behavior t (Maybe (Bool,FilePath)) <- fromPoll $  sourceEditorOpenFileDialog ff sourceEditorCtrl
+
             -- diffButton event
             eDiffGo :: RB.Event t ()  <- event0 diffGo command
             bStyle :: Behavior t Bool <- behavior mapEditor tabTraversal
@@ -99,3 +136,5 @@ mudEditor = do
     network <- compile networkDescription
     actuate mapEditorNetwork
     actuate network
+
+

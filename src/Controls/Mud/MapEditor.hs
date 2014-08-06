@@ -70,13 +70,13 @@ drawBlock dc activePos drawPos  =
 mapEditorIO :: Window a ->IO (Panel (), EventNetwork)
 mapEditorIO window = do
   t  <- timer window [ interval   := 50 ]
-  pp <- panel window []
+  panel1 <- panel window []
 
 -- Events and Behaviors
   let mapEditorEventNetwork :: forall t. Frameworks t => Moment t ()
       mapEditorEventNetwork = do
-        ekey   <- event1 pp keyOnDownEvent
-        emouse <- event1 pp mouse
+        ekey   <- event1 panel1 keyOnDownEvent
+        emouse <- event1 panel1 mouse
      -- timer
         etick  <- event0 t command
 
@@ -120,8 +120,8 @@ mapEditorIO window = do
             toggleBlockDrawing _ x = x
 
         -- draw the game state
-        sink pp [on paint :== stepper (\_dc _ -> return ()) $ (drawGameState <$> bActiveBlock <*> bBlockMap) <@ etick]
-        reactimate $ repaint pp <$ etick
+        sink panel1 [on paint :== stepper (\_dc _ -> return ()) $ (drawGameState <$> bActiveBlock <*> bBlockMap) <@ etick]
+        reactimate $ repaint panel1 <$ etick
 
   network <- compile mapEditorEventNetwork
-  return (pp,network)
+  return (panel1,network)
