@@ -11,7 +11,7 @@
 -- Code for the SourceEditor control
 --
 -----------------------------------------------------------------------------
-module SourceEditor (sourceEditor,sourceEditorLoadFile, sourceEditorOpenFileDialog, resultNew) where
+module SourceEditor (sourceEditor,sourceEditorLoadFile) where
 
 import Graphics.UI.WX as WX
 import Graphics.UI.WXCore as WXCore hiding (Event)
@@ -31,22 +31,14 @@ import Data.IORef
     --fromPoll $ readIORef ref
 --    where dialog ref = writeIORef ref =<< fileOpenDialog window True True "Open File" [("Haskell file",["*.hs"])] "" ""
 
-type OpenDialogResulter a = FileDialog () -> Int -> IO a
 
-fileOpenDialog1 :: Window a -> OpenDialogResulter () -> Bool -> Bool -> String -> [(String,[String])] -> FilePath -> FilePath -> IO ()
-fileOpenDialog1 parent result rememberCurrentDir allowReadOnly message wildcards directory filename
-  = fileDialog parent result flags message wildcards directory filename
-  where
-    flags
-      = wxOPEN .+. (if rememberCurrentDir then wxCHANGE_DIR else 0) .+. (if allowReadOnly then 0 else wxHIDE_READONLY)
+-- resultOrig :: OpenDialogResulter (Maybe FilePath)
+-- resultOrig fd r = if (r /= wxID_OK) then return Nothing
+  --                else do fname <- fileDialogGetPath fd
+    --                      return (Just fname)
 
-resultOrig :: OpenDialogResulter (Maybe FilePath)
-resultOrig fd r = if (r /= wxID_OK) then return Nothing
-                  else do fname <- fileDialogGetPath fd
-                          return (Just fname)
-
-resultNew :: OpenDialogResulter ()
-resultNew fd r = return ()
+-- resultNew :: OpenDialogResulter ()
+-- resultNew fd r = return ()
 
 what = register
 
@@ -84,12 +76,6 @@ sourceEditorLoadFile = styledTextCtrlLoadFile
 
 sourceEditorSaveFile :: SourceEditorCtrl -> FilePath -> IO Bool
 sourceEditorSaveFile = styledTextCtrlSaveFile
-
--- | Show an openFileDialog and get a FilePath. Load the file pointed to by
--- the path into the sourceEditor
-sourceEditorOpenFileDialog :: Window a -> OpenDialogResulter () -> SourceEditorCtrl -> IO ()
-sourceEditorOpenFileDialog window resulter sourceEditorCtrl =
-  fileOpenDialog1 window resulter True True "Open File" [("Haskell file",["*.hs"])] "" ""
 
 
 -- | Show an saveFileDialog and get a FilePath. Save the file pointed to by

@@ -9,6 +9,7 @@ import System.Random
 import Graphics.UI.WX.Classes
 import Paths (getDataFile)
 import WxAdditions
+import Dialogs
 import SourceEditor
 import Controls.Mud.MapEditor
 {-----------------------------------------------------------------------------
@@ -16,7 +17,7 @@ import Controls.Mud.MapEditor
 ------------------------------------------------------------------------------}
 -- constants
 
-type EventSource a = (AddHandler a, a -> IO ())
+
 
 main :: IO ()
 main = start mudEditor
@@ -28,20 +29,20 @@ main = start mudEditor
 -- main game function
 mudEditor :: IO ()
 mudEditor = do
-    ff <- frame [ text       := "Editor for the Functional Interactive Fiction Engine (E-FIFE)"
+    frame1 <- frame [ text       := "Editor for the Functional Interactive Fiction Engine (E-FIFE)"
                 , bgcolor    := white
                 , resizeable := False]
 
 
     status <- statusField [text := "Loading MUD Editor"]
-    set ff [statusBar := [status]]
+    set frame1 [statusBar := [status]]
 
    -- t  <- timer ff [ interval   := 50 ]
 
     fileMenu  <- menuPane      [ text := "File" ]
     new   <- menuItem fileMenu [ text := "&New\tCtrl+N", help := "New file" ]
     save   <- menuItem fileMenu [ text := "&Save\tCtrl+S", help := "Save file" ]
-    open <- menuItem fileMenu [ text      := "&Open\tCtrl+O"
+    openMenuItem <- menuItem fileMenu [ text      := "&Open\tCtrl+O"
                            , help      := "Open file"
                --            , checkable := True
                            ]
@@ -49,22 +50,22 @@ mudEditor = do
     quit  <- menuQuit fileMenu [help := "Quit the ide"]
 
 
-    (addDialogFinish,handlerDialogFinish) :: EventSource (FileDialog (), Int) <- newAddHandler
+   -- (addDialogFinish,handlerDialogFinish) :: EventSource (FileDialog (), Int) <- newAddHandler
     (addGetDialogFile,handlerGetDialogFile) :: EventSource (FileDialog ()) <- newAddHandler
     set new   [on command := mudEditor]
-    set quit  [on command := close ff]
+    set quit  [on command := close frame1]
 
 
-    set ff [menuBar := [fileMenu]]
+    set frame1 [menuBar := [fileMenu]]
 
-    (mapEditor,mapEditorNetwork) <- mapEditorIO ff
- --   cmb <- comboBox ff [items := ["item1","item2"]]
-    sourceEditorCtrl <- sourceEditor ff []
-    set open  [on command :=  (sourceEditorOpenFileDialog ff (\fd r -> handlerDialogFinish (fd,r)) sourceEditorCtrl)]
+    (mapEditor,mapEditorNetwork) <- mapEditorIO frame1
+ --   cmb <- comboBox frame1 [items := ["item1","item2"]]
+    sourceEditorCtrl <- sourceEditor frame1 []
+  --  set open  [on command :=  (sourceEditorOpenFileDialog frame1 (\fd r -> handlerDialogFinish (fd,r)) sourceEditorCtrl)]
 
    -- set save  [on command :=  (sourceEditorFileSave sourceEditorCtrl  >> return ())]
 
-    diffGo <- button ff [text := "Go"]
+    diffGo <- button frame1 [text := "Go"]
 
     let
       row1Layout = minsize (sz gridWidth gridHeight) $ widget mapEditor
@@ -72,22 +73,20 @@ mudEditor = do
      --   minsize (sz 600 400) $ wxhaskell setwidget diffV,widget diffGo]
 
 
-    set ff [ layout  :=  margin 10 columnLayout]
+    set frame1 [ layout  :=  margin 10 columnLayout]
 
     -- event network
     let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
             -- save event
             eSaveButton :: RB.Event t ()  <- event0 save command
-            eOpenButton :: RB.Event t ()  <- event0 open command
 
-            eDialogFinish :: RB.Event t (FileDialog (), Int)  <- fromAddHandler addDialogFinish
+            eDialogFinish :: RB.Event t (FileDialog (), Int)  <- eventDialogFinish openMenuItem frame1
             eGetDialogFile :: RB.Event t FilePath  <- fromAddHandler (fileDialogGetPath `mapIO` addGetDialogFile)
-            let eDialogOk  = filterE (\(_,r) -> r == wxID_OK) eDialogFinish
-                eDialogCancel = filterE (\(_,r) -> r /= wxID_OK) eDialogFinish
+            let eDialogOk  = eventDialogOk eDialogFinish
               --  what :: RB.Event t (IO ()) = (\(fd,r) -> handlerGetDialogFile fd) <$> eDialogOk
 
-            reactimate $ (\(fd,r) -> handlerGetDialogFile fd) <$> eDialogOk
+            reactimate $ handlerGetDialogFile <$> eDialogOk
 
             reactimate $ (\fp -> sourceEditorLoadFile sourceEditorCtrl fp >> return ()) <$> eGetDialogFile
 
