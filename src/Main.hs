@@ -40,18 +40,23 @@ mudEditor = do
    -- t  <- timer ff [ interval   := 50 ]
 
     fileMenu  <- menuPane      [ text := "File" ]
+    doMenu  <- menuPane      [ text := "Do" ]
+    doItMenuItem   <- menuItem doMenu [ text := "Do It", help := "DoIt" ]
     new   <- menuItem fileMenu [ text := "&New\tCtrl+N", help := "New file" ]
     save   <- menuItem fileMenu [ text := "&Save\tCtrl+S", help := "Save file" ]
+
+    contextMenu  <- menuPane      [ text := "Context" ]
+    autoMenuItem  <- menuItem contextMenu      [ text := "Auto" ]
+
     openMenuItem <- menuItem fileMenu [ text      := "&Open\tCtrl+O"
                            , help      := "Open file"
                --            , checkable := True
                            ]
+    menuSub fileMenu doMenu []
     menuLine fileMenu
     quit  <- menuQuit fileMenu [help := "Quit the ide"]
 
 
-   -- (addDialogFinish,handlerDialogFinish) :: EventSource (FileDialog (), Int) <- newAddHandler
-    (addGetDialogFile,handlerGetDialogFile) :: EventSource (FileDialog ()) <- newAddHandler
     set new   [on command := mudEditor]
     set quit  [on command := close frame1]
 
@@ -75,36 +80,28 @@ mudEditor = do
 
     set frame1 [ layout  :=  margin 10 columnLayout]
 
+    let openFileDialog :: ShowDialog
+        openFileDialog = fileOpenDialog1 frame1 True True "Open File" [("Haskell file",["*.hs"])] "" ""
+
+
     -- event network
     let networkDescription :: forall t. Frameworks t => Moment t ()
         networkDescription = do
             -- save event
             eSaveButton :: RB.Event t ()  <- event0 save command
 
-            eDialogFinish :: RB.Event t (FileDialog (), Int)  <- eventDialogFinish openMenuItem frame1
-            eGetDialogFile :: RB.Event t FilePath  <- fromAddHandler (fileDialogGetPath `mapIO` addGetDialogFile)
-            let eDialogOk  = eventDialogOk eDialogFinish
-              --  what :: RB.Event t (IO ()) = (\(fd,r) -> handlerGetDialogFile fd) <$> eDialogOk
+            -- open file event, load file into SourceEditor
 
-            reactimate $ handlerGetDialogFile <$> eDialogOk
+            -- NOTE: DO NOT USE "command" event for menuItems. It WILL cause duplicate event firings on menus attached to the menubar, but not sub-menus or context menus.
+            eOpenButton :: RB.Event t ()  <- event0 frame1 $ menu openMenuItem
+            eDoItMenuButton :: RB.Event t ()  <- event0 frame1 $ menu doItMenuItem
+            eAutoMenuItem <- event0 frame1 $ menu autoMenuItem
 
+            reactimate $ (styledTextCtrlAddText sourceEditorCtrl) ("what the fuck\n") <$ (unions [eDoItMenuButton,eAutoMenuItem] )
+
+            eGetDialogFinish <- eventDialogResult openFileDialog eOpenButton
+            eGetDialogFile :: RB.Event t FilePath  <- eventDialogOkFilePath eGetDialogFinish
             reactimate $ (\fp -> sourceEditorLoadFile sourceEditorCtrl fp >> return ()) <$> eGetDialogFile
-
-
-   --loaded <- fromMaybe (return False) $ sourceEditorLoadFile sourceEditorCtrl <$> mbFilePath
-  --let mb =  (\fp -> (loaded,fp) ) `fmap` mbFilePath
-  --return mb
-
-
-          --  let openFile =
-               -- bActiveFile :: Behavior t (Maybe (Bool,FilePath)) = accumB Nothing $ (openFile <@ eOpenButton)
-            --reactimate $ (sourceEditorOpenFileDialog ff sourceEditorCtrl) <$> eOpenButton
-         --   doActive Nothing = error "user must pick a file to load"
-         --   doActive Just (True, x) = x
-         --   doActive Just (False, x) = error "file failed to load"
-
-
-           -- bOpenFileDialog :: Behavior t (Maybe (Bool,FilePath)) <- fromPoll $  sourceEditorOpenFileDialog ff sourceEditorCtrl
 
             -- diffButton event
             eDiffGo :: RB.Event t ()  <- event0 diffGo command
@@ -116,6 +113,8 @@ mudEditor = do
                 setStyleText :: String -> IO () =(styledTextCtrlAddText sourceEditorCtrl)
 
             reactimate $ setStyleText <$> eStringStyle
+
+            reactimate $ menuPopup contextMenu (Point 0 0) frame1 <$ eDiffGo
 
             -- keyboard events
             ekey   <- event1 mapEditor keyOnDownEvent
@@ -135,5 +134,3 @@ mudEditor = do
     network <- compile networkDescription
     actuate mapEditorNetwork
     actuate network
-
-
