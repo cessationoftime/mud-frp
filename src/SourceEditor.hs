@@ -11,36 +11,22 @@
 -- Code for the SourceEditor control
 --
 -----------------------------------------------------------------------------
-module SourceEditor (sourceEditor,sourceEditorLoadFile) where
+module SourceEditor (sourceEditor,sourceEditorLoadFile,wireupSourceEditorOpenFileDialog) where
 
-import Graphics.UI.WX as WX
-import Graphics.UI.WXCore as WXCore hiding (Event)
-import Reactive.Banana as RB
-import Reactive.Banana.WX   hiding (newEvent)
---import System.Random
---import Graphics.UI.WXContrib.WXDiffCtrl
-import Graphics.UI.WX.Classes
+import Reactive.Banana
+import Reactive.Banana.WX
 import Data.Maybe (fromMaybe)
 import Data.IORef
+import Dialogs
+import RBWX.RBWX
 
---https://github.com/HeinrichApfelmus/reactive-banana/issues/29
---fileOpen :: RB.Event t () -> Moment t (Behavior t (Maybe FilePath))
---fileOpen e = do
---    ref <- liftIO $ newIORef
---    reactimate $ dialog ref <$ e
-    --fromPoll $ readIORef ref
---    where dialog ref = writeIORef ref =<< fileOpenDialog window True True "Open File" [("Haskell file",["*.hs"])] "" ""
-
-
--- resultOrig :: OpenDialogResulter (Maybe FilePath)
--- resultOrig fd r = if (r /= wxID_OK) then return Nothing
-  --                else do fname <- fileDialogGetPath fd
-    --                      return (Just fname)
-
--- resultNew :: OpenDialogResulter ()
--- resultNew fd r = return ()
-
-what = register
+-- | setup the eventNetwork to show an openFileDialog in the given Window when the given event is received. And load the file into the sourceControl
+wireupSourceEditorOpenFileDialog :: Frameworks t => Window a -> SourceEditorCtrl -> Event t () -> Moment t ()
+wireupSourceEditorOpenFileDialog frame1 sourceEditorCtrl event = do
+  let openFileDialog = fileOpenDialog1 frame1 True True "Open File" [("Haskell file",["*.hs"])] "" ""
+  eGetDialogFinish <- eventDialogResult openFileDialog event
+  eGetDialogFile  <- eventDialogOkFilePath eGetDialogFinish
+  reactimate $ (\fp -> sourceEditorLoadFile sourceEditorCtrl fp >> return ()) <$> eGetDialogFile
 
 -- |
 -- the color scheme to use to highlight Haskell code
@@ -85,6 +71,7 @@ sourceEditorSaveFileDialog window sourceEditorCtrl = do
   filePath <- fileSaveDialog window True True "Save File" [("Haskell file",["*.hs"])] "" ""
   let mb = (sourceEditorLoadFile sourceEditorCtrl) <$> filePath
   fromMaybe (return False) mb
+
 
 -- | Create the SourceEditor control
 -- AKA wxHaskell's StyledTextCtrl

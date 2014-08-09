@@ -1,3 +1,4 @@
+
 -----------------------------------------------------------------------------
 --
 -- Module      :  WxAdditions
@@ -29,3 +30,10 @@ windowGetOnKeyDown1 window
   = unsafeWindowGetHandlerState window wxEVT_KEY_DOWN (\eventKey -> return ())
 
 
+contextMenuEvent :: Event (Window a) (IO ())
+contextMenuEvent = newEvent "contextMenuEvent" windowGetOnContextMenu windowOnContextMenu
+
+wxDefaultPosition :: Point
+wxDefaultPosition = Point (-1) (-1)
+
+contextMenuPopup = flip menuPopup wxDefaultPosition
