@@ -34,6 +34,10 @@ contextMenuEvent :: Event (Window a) (IO ())
 contextMenuEvent = newEvent "contextMenuEvent" windowGetOnContextMenu windowOnContextMenu
 
 wxDefaultPosition :: Point
-wxDefaultPosition = Point (-1) (-1)
+wxDefaultPosition = pointNull
 
 contextMenuPopup = flip menuPopup wxDefaultPosition
+
+-- from defs.h
+wxID_ANY :: Int
+wxID_ANY = -1

@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
-
 import Reactive.Banana
 import Reactive.Banana.WX
 import Dialogs
@@ -40,7 +38,7 @@ networkDescription = do
     frame1 <- frame [ text  := "Editor for the Functional Interactive Fiction Engine (E-FIFE)"
       , resizeable := True]
 
-    aui <- liftIO  $ auiManagerCreate frame1 201
+    aui <- liftIO  $ auiManagerCreate frame1 wxAUI_MGR_DEFAULT
 
     status <- statusField [text := "Loading MUD Editor"]
     set frame1 [statusBar := [status]]
@@ -61,7 +59,7 @@ networkDescription = do
     quit  <- menuQuit fileMenu [help := "Quit the ide"]
     (mapEditor,eAutoMenuItem) <- mapEditorIO frame1
     diffGo <- button frame1 [text := "Go"]
-    sourceEditorCtrl <- liftIO $ sourceEditor frame1 []
+    sourceEditorCtrl <- sourceNotebook frame1
     added1 <- liftIO $ auiManagerAddPane aui sourceEditorCtrl wxCENTER "Source Pane"
     added2 <- liftIO $ auiManagerAddPane aui mapEditor wxTOP "map Pane"
     added3 <- liftIO $ auiManagerAddPane aui diffGo wxRIGHT "Diff Button"
@@ -77,26 +75,7 @@ networkDescription = do
     eDoItMenuButton :: Event t ()  <- event0 frame1 $ menu doItMenuItem
 
     liftIO $ auiManagerUpdate aui
-    reactimate $ (styledTextCtrlAddText sourceEditorCtrl) ("what the fuck\n") <$ (unions [eDoItMenuButton,eAutoMenuItem] )
 
-    bFilePath :: Behavior t (Maybe FilePath) <- wireupSourceEditorOpenFileDialog frame1 sourceEditorCtrl eOpenButton
-    let eSaveFilePath :: Event t (Maybe FilePath) =  bFilePath <@ eSaveButton
-        doSave :: StyledTextCtrl () -> Maybe FilePath -> IO()
-        doSave s  (Just x) = styledTextCtrlSaveFile s x >> return ()
-        doSave s  Nothing = return ()
-    reactimate $ doSave sourceEditorCtrl <$> eSaveFilePath
-
-
-    -- diffButton event
-    eDiffGo :: Event t ()  <- event0 diffGo command
-    bStyle :: Behavior t Bool <- behavior mapEditor tabTraversal
-
-    let
-        eStyle :: Event t Bool = bStyle <@ eDiffGo
-        eStringStyle :: Event t String = show <$> eStyle
-        setStyleText :: String -> IO () =(styledTextCtrlAddText sourceEditorCtrl)
-
-    reactimate $ setStyleText <$> eStringStyle
 
 
     -- status bar
@@ -104,3 +83,5 @@ networkDescription = do
      --   bstatus = (\r -> "total Blocks: unknown") <$> bBlockMap
        -- bstatus = (\r -> "total Blocks: " ++ show (length r)) <$> bBlockMap
     --     set status [text :== "total Blocks: unknown"]
+
+

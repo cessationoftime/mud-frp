@@ -24,6 +24,7 @@ executable mudFrp
     buildable: True
     default-language: Haskell2010
     hs-source-dirs: src
+    extensions: ScopedTypeVariables
     other-modules: Aui RBWX.RBWX RBWX.Lift RBWX.ContextMenu Dialogs
                    Controls.Mud.MapEditor SourceEditor WxAdditions Paths_mudFrp Paths
  
