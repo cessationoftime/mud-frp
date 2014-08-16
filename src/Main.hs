@@ -6,10 +6,11 @@ import Dialogs
 import SourceEditor
 import Controls.Mud.MapEditor
 import RBWX.RBWX
+import Aui
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
-
+-- TODO: setup wxAUI
 main :: IO ()
 main = start mainNetwork
 
@@ -37,56 +38,54 @@ networkDescription :: forall t. Frameworks t => Moment t ()
 networkDescription = do
     -- Layout
     frame1 <- frame [ text  := "Editor for the Functional Interactive Fiction Engine (E-FIFE)"
-      , bgcolor    := white
-      , resizeable := False]
+      , resizeable := True]
 
+    aui <- liftIO  $ auiManagerCreate frame1 201
 
     status <- statusField [text := "Loading MUD Editor"]
     set frame1 [statusBar := [status]]
 
-    -- t  <- timer ff [ interval   := 50 ]
-
     fileMenu  <- menuPane      [ text := "File" ]
-    doMenu  <- menuPane      [ text := "Do" ]
-    doItMenuItem   <- menuItem doMenu [ text := "Do It", help := "DoIt" ]
     new   <- menuItem fileMenu [ text := "&New\tCtrl+N", help := "New file" ]
-    save   <- menuItem fileMenu [ text := "&Save\tCtrl+S", help := "Save file" ]
-
-
-
     openMenuItem <- menuItem fileMenu [ text      := "&Open\tCtrl+O"
                            , help      := "Open file"
                --            , checkable := True
                            ]
+    saveMenuItem   <- menuItem fileMenu [ text := "&Save\tCtrl+S", help := "Save file" ]
+
+    doMenu  <- menuPane      [ text := "Do" ]
+    doItMenuItem   <- menuItem doMenu [ text := "Do It", help := "DoIt" ]
     menuSub fileMenu doMenu []
+
     menuLine fileMenu
     quit  <- menuQuit fileMenu [help := "Quit the ide"]
     (mapEditor,eAutoMenuItem) <- mapEditorIO frame1
     diffGo <- button frame1 [text := "Go"]
     sourceEditorCtrl <- liftIO $ sourceEditor frame1 []
-    let row1Layout = minsize (sz gridWidth gridHeight) $ widget mapEditor
-        columnLayout = column 10 [row1Layout,widget diffGo, fill $  minsize (sz 400 400) $ widget sourceEditorCtrl]
-    --   minsize (sz 600 400) $ wxhaskell setwidget diffV,widget diffGo]
-    set frame1 [ layout  :=  margin 10 columnLayout]
+    added1 <- liftIO $ auiManagerAddPane aui sourceEditorCtrl wxCENTER "Source Pane"
+    added2 <- liftIO $ auiManagerAddPane aui mapEditor wxTOP "map Pane"
+    added3 <- liftIO $ auiManagerAddPane aui diffGo wxRIGHT "Diff Button"
     set new   [on command := mainNetwork]
     set quit  [on command := close frame1]
     set frame1 [menuBar := [fileMenu]]
     -- Events
 
-    -- save event
-    eSaveButton :: Event t ()  <- event0 save command
-
-
-    -- open file event, load file into SourceEditor
 
     -- NOTE: DO NOT USE "command" event for menuItems. It WILL cause duplicate event firings on menus attached to the menubar, but not sub-menus or context menus.
+    eSaveButton :: Event t ()  <- event0 frame1 $ menu saveMenuItem
     eOpenButton :: Event t ()  <- event0 frame1 $ menu openMenuItem
     eDoItMenuButton :: Event t ()  <- event0 frame1 $ menu doItMenuItem
 
-
+    liftIO $ auiManagerUpdate aui
     reactimate $ (styledTextCtrlAddText sourceEditorCtrl) ("what the fuck\n") <$ (unions [eDoItMenuButton,eAutoMenuItem] )
 
-    wireupSourceEditorOpenFileDialog frame1 sourceEditorCtrl eOpenButton
+    bFilePath :: Behavior t (Maybe FilePath) <- wireupSourceEditorOpenFileDialog frame1 sourceEditorCtrl eOpenButton
+    let eSaveFilePath :: Event t (Maybe FilePath) =  bFilePath <@ eSaveButton
+        doSave :: StyledTextCtrl () -> Maybe FilePath -> IO()
+        doSave s  (Just x) = styledTextCtrlSaveFile s x >> return ()
+        doSave s  Nothing = return ()
+    reactimate $ doSave sourceEditorCtrl <$> eSaveFilePath
+
 
     -- diffButton event
     eDiffGo :: Event t ()  <- event0 diffGo command
@@ -105,4 +104,3 @@ networkDescription = do
      --   bstatus = (\r -> "total Blocks: unknown") <$> bBlockMap
        -- bstatus = (\r -> "total Blocks: " ++ show (length r)) <$> bBlockMap
     --     set status [text :== "total Blocks: unknown"]
-
