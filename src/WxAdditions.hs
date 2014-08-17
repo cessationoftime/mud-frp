@@ -41,3 +41,17 @@ contextMenuPopup = flip menuPopup wxDefaultPosition
 -- from defs.h
 wxID_ANY :: Int
 wxID_ANY = -1
+
+
+auiNotebookOnPageCloseEvent :: Event (AuiNotebook a) (IO ())
+auiNotebookOnPageCloseEvent = newEvent "auiNotebookOnPageClose" auiNotebookGetOnPageClose auiNotebookOnPageClose
+
+-- | Set an event handler for a push button.
+auiNotebookOnPageClose :: AuiNotebook a -> IO () -> IO ()
+auiNotebookOnPageClose notebook eventHandler
+  = windowOnEvent notebook [wxEVT_COMMAND_AUINOTEBOOK_PAGE_CLOSE] eventHandler (\evt -> eventHandler)
+-- | Get the current button event handler on a window.
+auiNotebookGetOnPageClose :: AuiNotebook a -> IO (IO ())
+auiNotebookGetOnPageClose notebook
+  = unsafeWindowGetHandlerState notebook wxEVT_COMMAND_AUINOTEBOOK_PAGE_CLOSE skipCurrentEvent
+

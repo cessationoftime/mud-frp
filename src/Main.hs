@@ -14,7 +14,7 @@ main = start mainNetwork
 
 
 {-----------------------------------------------------------------------------
-    Game Logic
+    Compile and actuate Reactive Network
 ------------------------------------------------------------------------------}
 -- main
 mainNetwork :: IO ()
@@ -59,8 +59,8 @@ networkDescription = do
     quit  <- menuQuit fileMenu [help := "Quit the ide"]
     (mapEditor,eAutoMenuItem) <- mapEditorIO frame1
     diffGo <- button frame1 [text := "Go"]
-    sourceEditorCtrl <- sourceNotebook frame1
-    added1 <- liftIO $ auiManagerAddPane aui sourceEditorCtrl wxCENTER "Source Pane"
+    notebook <- liftIO $ newNotebook frame1
+    added1 <- liftIO $ auiManagerAddPane aui notebook wxCENTER "Source Pane"
     added2 <- liftIO $ auiManagerAddPane aui mapEditor wxTOP "map Pane"
     added3 <- liftIO $ auiManagerAddPane aui diffGo wxRIGHT "Diff Button"
     set new   [on command := mainNetwork]
@@ -76,7 +76,35 @@ networkDescription = do
 
     liftIO $ auiManagerUpdate aui
 
+    eFilePathOk :: Event t FilePath <- openFileDialogOkEvent frame1 eOpenButton
+    eOpenNotebookPage :: Event t NotebookPage <- addSourcePage notebook `mapIOevent` eFilePathOk
 
+    let eSaveFilePath :: Event t (Maybe FilePath) =  bFilePath <@ eSaveButton
+        bFilePath :: Behavior t (Maybe FilePath) =  stepper Nothing (Just <$> eFilePathOk)
+        doSave :: StyledTextCtrl () -> Maybe FilePath -> IO()
+        doSave s  (Just x) = styledTextCtrlSaveFile s x >> return ()
+        doSave s  Nothing = return ()
+
+
+
+
+    -- diffButton event
+    eDiffGo :: Event t ()  <- event0 diffGo command
+    bStyle :: Behavior t Bool <- behavior mapEditor tabTraversal
+
+    let
+        eStyle :: Event t Bool = bStyle <@ eDiffGo
+        eStringStyle :: Event t String = show <$> eStyle
+{-        setStyleText :: String -> IO () =(styledTextCtrlAddText sourceEditorCtrlOfPage)
+    reactimate $ setStyleText <$> eStringStyle
+         reactimate $ (styledTextCtrlAddText sourceEditorCtrlOfPage) ("what the fuck\n") <$ (unions [eDoItMenuButton,eAutoMenuItem] )
+
+    reactimate $ doSave sourceEditorCtrlOfPage <$> eSaveFilePath
+-}
+  --
+    reactimate $ (\fp -> addSourcePage notebook fp >> return ()
+
+        ) <$> eFilePathOk
 
     -- status bar
     --   let bstatus :: Behavior t String

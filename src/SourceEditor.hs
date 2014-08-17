@@ -11,7 +11,7 @@
 -- Code for the SourceEditor control
 --
 -----------------------------------------------------------------------------
-module SourceEditor (sourceEditor,sourceEditorLoadFile,wireupSourceEditorOpenFileDialog) where
+module SourceEditor (sourceEditor,sourceEditorLoadFile,openFileDialogOkEvent, SourceEditorCtrl) where
 
 import Reactive.Banana
 import Reactive.Banana.WX
@@ -20,14 +20,16 @@ import Data.IORef
 import Dialogs
 import RBWX.RBWX
 
--- | setup the eventNetwork to show an openFileDialog in the given Window when the given event is received. And load the file into the sourceControl
-wireupSourceEditorOpenFileDialog :: Frameworks t => Window a -> SourceEditorCtrl -> Event t () -> Moment t (Behavior t (Maybe FilePath))
-wireupSourceEditorOpenFileDialog frame1 sourceEditorCtrl event = do
+
+  {-
+wireupSourceEditorOpenFileDialog1 :: Frameworks t => Window a -> SourceEditorCtrl -> Event t () -> Moment t (Behavior t (Maybe FilePath))
+wireupSourceEditorOpenFileDialog1 frame1 sourceEditorCtrl event = do
   let openFileDialog = fileOpenDialog1 frame1 True True "Open File" [("Haskell file",["*.hs"])] "" ""
   eGetDialogFinish <- eventDialogResult openFileDialog event
-  eGetDialogFile  <- eventDialogOkFilePath eGetDialogFinish
-  reactimate $ (\fp -> sourceEditorLoadFile sourceEditorCtrl fp >> return ()) <$> eGetDialogFile
-  return $ stepper Nothing (Just <$> eGetDialogFile)
+  eGetDialogOkFinish  <- eventDialogOkFilePath eGetDialogFinish
+  --reactimate $ (\fp -> sourceEditorLoadFile sourceEditorCtrl fp >> return ()) <$> eGetDialogFile
+  return $ stepper Nothing (Just <$> eGetDialogOkFinish)
+  -}
 -- |
 -- the color scheme to use to highlight Haskell code
 colorscheme = [ ( wxSTC_HA_DEFAULT, rgb 0 0 0 )
