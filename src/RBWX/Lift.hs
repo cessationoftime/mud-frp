@@ -24,18 +24,24 @@ module RBWX.Lift
    RBWX.Lift.button,
    RBWX.Lift.panel,
    RBWX.Lift.timer,
+   RBWX.Lift.windowGetId,
+   WindowId(..),
    module WX_,
-   module WXCore,
-   module WxClasses,
-   module WxAdditions
+   module WXCore_,
+   module WxClasses
+ --  module WxAdditions
   ) where
-import WxAdditions
+--import WxAdditions
 import Graphics.UI.WX as WX_
  hiding (panel,button,Timer,set,menuLine,frame,statusField,menuSub,menuPane,menuItem,menuQuit, Event,
          timer)
  -- (Prop((:=)), start, statusBar, layout, command, on, menuBar, menu, tabTraversal,
  --  mouse, interval, repaint, timer, bitmap, drawBitmap, paint,styledTextCtrl
  -- )
+
+import Graphics.UI.WXCore as WXCore_
+  hiding (Event, windowGetId)
+
 import Graphics.UI.WXCore as WXCore
   hiding (Event)
 
@@ -50,7 +56,6 @@ import Graphics.UI.WX.Classes as WxClasses
 import qualified Graphics.UI.WX as WX
 import Reactive.Banana
 import Reactive.Banana.WX hiding (newEvent)
-
 
 menuSub :: Frameworks t => Menu b -> Menu a -> [Prop (MenuItem ())] -> Moment t (MenuItem ())
 menuSub = liftIO3 WX.menuSub
@@ -95,3 +100,12 @@ liftIO2 funct aa = liftIO . funct aa
 
 liftIO3 :: Frameworks t => (a -> b -> c -> IO d) -> a -> b -> c -> Moment t d
 liftIO3 funct aa bb = liftIO . funct aa bb
+
+
+newtype WindowId = WindowId Int deriving (Eq)
+
+windowGetId :: forall a. Window a -> IO WindowId
+windowGetId w =  do id <- WXCore.windowGetId w
+                    return $ WindowId id
+
+

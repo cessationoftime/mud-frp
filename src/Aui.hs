@@ -21,7 +21,8 @@ import Controls.Mud.MapEditor
 import RBWX.RBWX
 import System.FilePath
 
-data NotebookPage = SourceNotebookPage SourceEditorCtrl FilePath
+
+data NotebookPage = SourceNotebookPage WindowId SourceEditorCtrl FilePath
 
 newNotebook :: Frame a -> IO (AuiNotebook ())
 newNotebook frame1 = do
@@ -47,18 +48,20 @@ addNewSourcePage :: AuiNotebook () -> FilePath -> IO NotebookPage
 addNewSourcePage notebook filePath = do
   sourceEditorCtrl <- sourceEditor notebook []
   _ <- auiNotebookAddPageWithBitmap notebook sourceEditorCtrl (takeFileName filePath) True nullBitmap
-  return $ SourceNotebookPage sourceEditorCtrl filePath
+  id <- windowGetId sourceEditorCtrl
+  return $ SourceNotebookPage id sourceEditorCtrl filePath
 
 addSourcePage :: AuiNotebook () -> FilePath -> IO NotebookPage
 addSourcePage notebook filePath = do
-  snp@(SourceNotebookPage sourceEditorCtrl _) <- addNewSourcePage notebook filePath
+  snp@(SourceNotebookPage _ sourceEditorCtrl _) <- addNewSourcePage notebook filePath
   sourceEditorLoadFile sourceEditorCtrl filePath
   return snp
 
   --index <- auiNotebookGetPageIndex notebook sourceEditorCtrl
 
 
-
+isNotebookPage :: WindowId -> NotebookPage -> Bool
+isNotebookPage winId (SourceNotebookPage id _ _) = winId == id
 
 
 

@@ -5,6 +5,7 @@ import SourceEditor
 import Controls.Mud.MapEditor
 import RBWX.RBWX
 import Aui
+import WxAdditions
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
@@ -42,9 +43,10 @@ networkDescription = do
 
     status <- statusField [text := "Loading MUD Editor"]
     set frame1 [statusBar := [status]]
-
+    diffGo <- button frame1 [text := "Go"]
+    -- Menu layout
     fileMenu  <- menuPane      [ text := "File" ]
-    new   <- menuItem fileMenu [ text := "&New\tCtrl+N", help := "New file" ]
+    newMenuItem   <- menuItem fileMenu [ text := "&New\tCtrl+N", help := "New file" ]
     openMenuItem <- menuItem fileMenu [ text      := "&Open\tCtrl+O"
                            , help      := "Open file"
                --            , checkable := True
@@ -57,54 +59,72 @@ networkDescription = do
 
     menuLine fileMenu
     quit  <- menuQuit fileMenu [help := "Quit the ide"]
-    (mapEditor,eAutoMenuItem) <- mapEditorIO frame1
-    diffGo <- button frame1 [text := "Go"]
+
+    -- Menu events
+       -- NOTE: DO NOT USE "command" event for menuItems. It WILL cause duplicate event firings on menus attached to the menubar, but not sub-menus or context menus.
+    eSaveMenuItem :: Event t ()  <- event0 frame1 $ menu saveMenuItem
+    eOpenMenuItem :: Event t ()  <- event0 frame1 $ menu openMenuItem
+    eNewMenuItem :: Event t ()  <- event0 frame1 $ menu newMenuItem
+    eDoItMenuButton :: Event t ()  <- event0 frame1 $ menu doItMenuItem
+
+    --Context Menu
+    (mapEditor,eAutoContextItem) <- mapEditorIO frame1
+
+    -- Notebook layout
+
     notebook <- liftIO $ newNotebook frame1
     added1 <- liftIO $ auiManagerAddPane aui notebook wxCENTER "Source Pane"
     added2 <- liftIO $ auiManagerAddPane aui mapEditor wxTOP "map Pane"
     added3 <- liftIO $ auiManagerAddPane aui diffGo wxRIGHT "Diff Button"
-    set new   [on command := mainNetwork]
+   -- set new   [on command := mainNetwork]
     set quit  [on command := close frame1]
     set frame1 [menuBar := [fileMenu]]
     -- Events
 
 
-    -- NOTE: DO NOT USE "command" event for menuItems. It WILL cause duplicate event firings on menus attached to the menubar, but not sub-menus or context menus.
-    eSaveButton :: Event t ()  <- event0 frame1 $ menu saveMenuItem
-    eOpenButton :: Event t ()  <- event0 frame1 $ menu openMenuItem
-    eDoItMenuButton :: Event t ()  <- event0 frame1 $ menu doItMenuItem
+
 
     liftIO $ auiManagerUpdate aui
 
-    eFilePathOk :: Event t FilePath <- openFileDialogOkEvent frame1 eOpenButton
-    eOpenNotebookPage :: Event t NotebookPage <- addSourcePage notebook `mapIOevent` eFilePathOk
+    eNewFileOk :: Event t FilePath  <- openFileDialogOkEvent frame1 eNewMenuItem
+    eNewNotebookPage :: Event t NotebookPage <- addNewSourcePage notebook `mapIOreaction` eNewFileOk
 
-    let eSaveFilePath :: Event t (Maybe FilePath) =  bFilePath <@ eSaveButton
-        bFilePath :: Behavior t (Maybe FilePath) =  stepper Nothing (Just <$> eFilePathOk)
+    eOpenFileOk :: Event t FilePath <- openFileDialogOkEvent frame1 eOpenMenuItem
+    eOpenNotebookPage :: Event t NotebookPage <- addSourcePage notebook `mapIOreaction` eOpenFileOk
+
+    ePageClose :: Event t WindowId <- event1 notebook auiNotebookOnPageClosedEvent
+
+    let eLoadNotebookPage :: Event t NotebookPage =  eNewNotebookPage `union` eOpenNotebookPage
+
+    let eSaveFilePath :: Event t (Maybe FilePath) =  bFilePath <@ eSaveMenuItem
+        bFilePath :: Behavior t (Maybe FilePath) =  stepper Nothing (Just <$> eOpenFileOk)
         doSave :: StyledTextCtrl () -> Maybe FilePath -> IO()
         doSave s  (Just x) = styledTextCtrlSaveFile s x >> return ()
         doSave s  Nothing = return ()
 
-
+        ePages :: Event t [NotebookPage]
+        ePages = accumE [] $
+            (add <$> eLoadNotebookPage) `union` (remove <$> ePageClose)
+          where
+            add  nb nbs = nb:nbs
+            remove winId nbs =  filter (isNotebookPage winId) nbs
 
 
     -- diffButton event
     eDiffGo :: Event t ()  <- event0 diffGo command
     bStyle :: Behavior t Bool <- behavior mapEditor tabTraversal
-
+{-
     let
         eStyle :: Event t Bool = bStyle <@ eDiffGo
         eStringStyle :: Event t String = show <$> eStyle
-{-        setStyleText :: String -> IO () =(styledTextCtrlAddText sourceEditorCtrlOfPage)
+        setStyleText :: String -> IO () =(styledTextCtrlAddText sourceEditorCtrlOfPage)
+
     reactimate $ setStyleText <$> eStringStyle
-         reactimate $ (styledTextCtrlAddText sourceEditorCtrlOfPage) ("what the fuck\n") <$ (unions [eDoItMenuButton,eAutoMenuItem] )
+         reactimate $ (styledTextCtrlAddText sourceEditorCtrlOfPage) ("what the fuck\n") <$ (unions [eDoItMenuButton,eAutoContextItem] )
 
     reactimate $ doSave sourceEditorCtrlOfPage <$> eSaveFilePath
 -}
-  --
-    reactimate $ (\fp -> addSourcePage notebook fp >> return ()
-
-        ) <$> eFilePathOk
+    return ()
 
     -- status bar
     --   let bstatus :: Behavior t String

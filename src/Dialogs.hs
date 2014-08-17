@@ -34,8 +34,7 @@ type DialogResult = (FileDialog (), Int)
 
 -- |trigger opening the fileDialog on the given event and create a new DialogResult event.
 eventDialogResult :: Frameworks t => ChainIO DialogResult -> Event t b -> Moment t (Event t DialogResult)
-eventDialogResult showDialog ev = -- do
-    showDialog `mapIOchainevent` ev
+eventDialogResult showDialog ev = showDialog `mapIOchainreaction` ev
 
 
 -- |used to create events representing specific button presses in dialogs using the wxID constants. Ex: eventDialogOk, eventDialogCancel
@@ -53,8 +52,7 @@ eventDialogCancel = eventDialogButtonClick wxID_CANCEL
 
 -- |filter the eventDialogResult into an OK-button-only result, and get the resulting FilePath
 eventDialogOkFilePath :: Frameworks t => Event t DialogResult ->  Moment t (Event t FilePath)
-eventDialogOkFilePath eDialogFinish =
- fileDialogGetPath `mapIOevent` (eventDialogOk eDialogFinish)
+eventDialogOkFilePath eDialogFinish = fileDialogGetPath `mapIOreaction` (eventDialogOk eDialogFinish)
 
 -- | setup the eventNetwork to show an openFileDialog in the given Window when the given event is received. And load the file into the sourceControl
 openFileDialogOkEvent :: Frameworks t => Window a -> Event t b -> Moment t (Event t FilePath)
