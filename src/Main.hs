@@ -92,7 +92,7 @@ networkDescription = do
     eOpenFileOk :: Event t FilePath <- openFileDialogOkEvent frame1 eOpenMenuItem
     eOpenNotebookPage :: Event t NotebookPage <- addSourcePage notebook `mapIOreaction` eOpenFileOk
 
-    ePageClose :: Event t WindowId <- event1 notebook auiNotebookOnPageClosedEvent
+    eCloseNotebookPage :: Event t EventAuiNotebook <- event1 notebook auiNotebookOnPageClosedEvent
 
     let eLoadNotebookPage :: Event t NotebookPage =  eNewNotebookPage `union` eOpenNotebookPage
 
@@ -104,10 +104,10 @@ networkDescription = do
 
         ePages :: Event t [NotebookPage]
         ePages = accumE [] $
-            (add <$> eLoadNotebookPage) `union` (remove <$> ePageClose)
+            (add <$> eLoadNotebookPage) `union` (remove <$> eCloseNotebookPage)
           where
             add  nb nbs = nb:nbs
-            remove winId nbs =  filter (isNotebookPage winId) nbs
+            remove (EventAuiNotebook _ newSel _) nbs =  filter (isNotebookPage newSel) nbs
 
 
     -- diffButton event

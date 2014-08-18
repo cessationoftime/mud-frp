@@ -20,7 +20,7 @@ import SourceEditor
 import Controls.Mud.MapEditor
 import RBWX.RBWX
 import System.FilePath
-
+import WxAdditions
 
 data NotebookPage = SourceNotebookPage WindowId SourceEditorCtrl FilePath
 
@@ -59,9 +59,14 @@ addSourcePage notebook filePath = do
 
   --index <- auiNotebookGetPageIndex notebook sourceEditorCtrl
 
+class IsNotebookPage a where
+  isNotebookPage :: a -> NotebookPage -> Bool
 
-isNotebookPage :: WindowId -> NotebookPage -> Bool
-isNotebookPage winId (SourceNotebookPage id _ _) = winId == id
+instance IsNotebookPage WindowId where
+  isNotebookPage winId (SourceNotebookPage id _ _) = winId == id
+
+instance IsNotebookPage WindowSelection where
+  isNotebookPage (WindowSelection winId _) (SourceNotebookPage id _ _) = winId == id
 
 
 

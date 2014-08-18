@@ -30,37 +30,63 @@ windowGetOnKeyDown1 window
   = unsafeWindowGetHandlerState window wxEVT_KEY_DOWN (\eventKey -> return ())
 
 -- AUI Notebook PageClose
-auiNotebookOnPageCloseEvent :: Event (AuiNotebook a) (IO ())
-auiNotebookOnPageCloseEvent = newEvent "auiNotebookOnPageClose" auiNotebookGetOnPageClose auiNotebookOnPageClose
-
-auiNotebookGetOnPageClose :: AuiNotebook a -> IO (IO ())
-auiNotebookGetOnPageClose notebook
-  = unsafeWindowGetHandlerState notebook wxEVT_AUINOTEBOOK_PAGE_CLOSE propagateEvent
-
-auiNotebookOnPageClose :: AuiNotebook a -> IO () -> IO ()
-auiNotebookOnPageClose notebook eventHandler
-  = windowOnEvent notebook [wxEVT_AUINOTEBOOK_PAGE_CLOSE] eventHandler (const eventHandler)
-
-
+auiNotebookOnPageCloseEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+auiNotebookOnPageCloseEvent = newAuiEvent "auiNotebookOnPageClose" wxEVT_AUINOTEBOOK_PAGE_CLOSE
 
 -- AUINotebook PageClosed
-auiNotebookOnPageClosedEvent :: Event (AuiNotebook a) (WindowId -> IO ())
-auiNotebookOnPageClosedEvent = newEvent "auiNotebookOnPageClosed" auiNotebookGetOnPageClosed auiNotebookOnPageClosed
+auiNotebookOnPageClosedEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+auiNotebookOnPageClosedEvent = newAuiEvent "auiNotebookOnPageClosed" wxEVT_AUINOTEBOOK_PAGE_CLOSED
 
-auiNotebookGetOnPageClosed :: AuiNotebook a -> IO (WindowId -> IO ())
-auiNotebookGetOnPageClosed notebook
-  = unsafeWindowGetHandlerState notebook wxEVT_AUINOTEBOOK_PAGE_CLOSED (const propagateEvent)
+-- AUINotebook PageChange
+auiNotebookOnPageChangingEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+auiNotebookOnPageChangingEvent = newAuiEvent "auiNotebookOnPageChanging" wxEVT_AUINOTEBOOK_PAGE_CHANGING
 
-auiNotebookOnPageClosed :: AuiNotebook a -> (WindowId -> IO ()) -> IO ()
-auiNotebookOnPageClosed notebook eventHandler
-  = windowOnEvent notebook [wxEVT_AUINOTEBOOK_PAGE_CLOSED] eventHandler closeHandler
+-- AUINotebook PageChanged
+auiNotebookOnPageChangedEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+auiNotebookOnPageChangedEvent = newAuiEvent "auiNotebookOnPageChanged" wxEVT_AUINOTEBOOK_PAGE_CHANGED
+
+data WindowSelection = WindowSelection WindowId (Window ())
+data EventAuiNotebook = EventAuiNotebook {
+    nbCurrent   :: WindowSelection,    -- Current Selection from Notebook
+    nbChangeNew :: WindowSelection,    -- NewSelected Window from Event
+    nbChangeOld :: WindowSelection     -- Old Selected Page from Event
+   }
+
+
+
+
+
+--- Utility -------------------------------------
+
+newAuiEvent :: String -> EventId -> Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+newAuiEvent s evId = newEvent s (auiGetOn evId) (auiOn evId)
+
+auiOn :: EventId ->  AuiNotebook a -> (EventAuiNotebook -> IO ()) -> IO ()
+auiOn eventId notebook eventHandler
+  = windowOnEvent notebook [eventId] eventHandler closeHandler
        where closeHandler event = do
-               window <- fromCloseEvent (objectCast event)
+               window <- fromAuiNotebookEvent (objectCast event)
                eventHandler window
 
-fromCloseEvent :: AuiNotebookEvent a -> IO (WindowId)
-fromCloseEvent event = do
- -- et <- eventGetEventType event
-  obj <- eventGetEventObject event
-  id <- windowGetId (objectCast obj)
-  return id
+auiGetOn :: EventId -> AuiNotebook a -> IO (EventAuiNotebook -> IO ())
+auiGetOn eventId notebook
+  = unsafeWindowGetHandlerState notebook eventId (const propagateEvent)
+
+
+fromAuiNotebookEvent :: AuiNotebookEvent a -> IO EventAuiNotebook
+fromAuiNotebookEvent event = do
+  notebookObj <- eventGetEventObject event
+  selection <- bookCtrlEventGetSelection event
+  oldSelection <- bookCtrlEventGetOldSelection event
+  cSelection <- auiNotebookGetSelection (objectCast notebookObj)
+  new <- newSel notebookObj selection
+  old <- newSel notebookObj oldSelection
+  current <- newSel notebookObj cSelection
+  return $ EventAuiNotebook current new old
+  where newSel nb sel = do
+          pg <- auiNotebookGetPage (objectCast nb) sel
+          id <- windowGetId pg
+          return $ WindowSelection id pg
+
+
+
