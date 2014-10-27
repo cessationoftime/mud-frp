@@ -47,8 +47,8 @@ addNewSourcePage notebook filePath = do
 internalAddNewSourcePage :: AuiNotebook () -> FilePath -> IO NotebookPage
 internalAddNewSourcePage notebook filePath = do
   sourceEditorCtrl <- sourceEditor notebook []
-  id <- windowGetId sourceEditorCtrl
   _ <- auiNotebookAddPageWithBitmap notebook sourceEditorCtrl (takeFileName filePath) True nullBitmap
+  id <- windowGetId sourceEditorCtrl
 
   return $ SourceNotebookPage id sourceEditorCtrl filePath
 
