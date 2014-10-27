@@ -22,22 +22,22 @@ windowGetOnKeyDown1 window
 
 -- AUI Notebook PageClose
 --notebookOnPageCloseEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
---notebookOnPageCloseEvent = newAuiEvent "auiNotebookOnPageClose" wxEVT_NOTEBOOK_PAGE_CLOSE
+--notebookOnPageCloseEvent = newAuiEvent "auiNotebookOnPageClose" wxEVT_AUINOTEBOOK_PAGE_CLOSE
 
 -- AUINotebook PageClosed
 --notebookOnPageClosedEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
---notebookOnPageClosedEvent = newAuiEvent "auiNotebookOnPageClosed" wxEVT_NOTEBOOK_PAGE_CLOSED
+--notebookOnPageClosedEvent = newAuiEvent "auiNotebookOnPageClosed" wxEVT_AUINOTEBOOK_PAGE_CLOSED
 
 -- AUINotebook PageChange
 notebookOnPageChangingEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
-notebookOnPageChangingEvent = newAuiEvent "auiNotebookOnPageChanging" wxEVT_NOTEBOOK_PAGE_CHANGING
+notebookOnPageChangingEvent = newAuiEvent "auiNotebookOnPageChanging" wxEVT_AUINOTEBOOK_PAGE_CHANGING
 
 
 --split into two events. ChangedTo and ChangedFrom based on the eventObject
 
 -- AUINotebook PageChanged
 notebookOnPageChangedEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
-notebookOnPageChangedEvent = newAuiEvent "auiNotebookOnPageChanged" wxEVT_NOTEBOOK_PAGE_CHANGED
+notebookOnPageChangedEvent = newAuiEvent "auiNotebookOnPageChanged" wxEVT_AUINOTEBOOK_PAGE_CHANGED
 
 data WindowSelection = WindowSelection (Maybe WindowId) (Maybe (Window ())) deriving (Show)
 data EventAuiNotebook = EventAuiNotebook {
@@ -86,6 +86,7 @@ fromAuiNotebookEvent s event = do
          (c,s,o)| evType == wxEVT_NOTEBOOK_PAGE_CHANGING && c == o -> "ChangingFrom"
          (c,s,o)| evType == wxEVT_NOTEBOOK_PAGE_CHANGED  && c == s -> "ChangedTo"
          (c,s,o) | evType == wxEVT_NOTEBOOK_PAGE_CHANGED && c == o -> "ChangedFrom"
+         _ -> "Other"
 
 
 
@@ -101,7 +102,7 @@ fromAuiNotebookEvent s event = do
   new <- newSel notebook selection pgCount
   old <- newSel notebook oldSelection pgCount
   let ean = EventAuiNotebook current new old
-  infoDialog notebook (changeType ++ " " ++ show cSelection ++ " " ++ show selection ++ " " ++ show oldSelection) (s ++ "\n" ++ show ean ++ "\n\n" )
+ -- infoDialog notebook (changeType ++ " " ++ show cSelection ++ " " ++ show selection ++ " " ++ show oldSelection) (s ++ "\n" ++ show ean ++ "\n\n" )
   return ean
   where newSel nb sel count =
           if sel < count && sel /= wxNOT_FOUND then do

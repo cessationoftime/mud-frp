@@ -90,15 +90,18 @@ networkDescription = do
     eOpenFileOk :: Event t FilePath <- openFileDialogOkEvent frame1 eOpenMenuItem
     eOpenNotebookPage :: Event t NotebookPage <- addSourcePage notebook `mapIOreaction` eOpenFileOk
 
-   -- eCloseNotePage <- eCloseNotebookPage notebook
+   -- eCloseNotebookPage :: Event t EventAuiNotebook <- event1 notebook notebookOnPageClosedEvent
+
+
 
     eActiveNotePage <- eActiveNotebookPage notebook
+
 
     let eLoadNotebookPage :: Event t NotebookPage =  eNewNotebookPage `union` eOpenNotebookPage
 {-
         bPages :: Behavior t [NotebookPage]
         bPages = accumB [] $
-            (add <$> eLoadNotebookPage) `union` (filterNotPage <$> eCloseNotePage)
+            (add <$> eLoadNotebookPage) `union` (filterNotPage <$> eCloseNotebookPage)
           where
             add  nb nbs = nb:nbs
 -}
@@ -107,7 +110,7 @@ networkDescription = do
         findPage :: [NotebookPage] -> WindowSelection -> Maybe NotebookPage
         findPage notes winSelect = find (isNotebookPage winSelect) notes
 
-    --    bActiveNBPage :: Behavior t (Maybe NotebookPage) = stepper Nothing $ (findPage <$> bPages) <@> eActiveNotePage
+       -- bActiveNBPage :: Behavior t (Maybe NotebookPage) = stepper Nothing $ (findPage <$> bPages) <@> eActiveNotePage
 
       --  eSaveNBPage :: Event t (Maybe NotebookPage) =  bActiveNBPage <@ eSaveMenuItem
 
@@ -115,7 +118,7 @@ networkDescription = do
         doSave (Just (SourceNotebookPage _ ctrl fp)) = styledTextCtrlSaveFile ctrl fp >> return ()
         doSave Nothing = return ()
 
-  --  reactimate $ doSave <$> eSaveNBPage
+   -- reactimate $ doSave <$> eSaveNBPage
     return ()
     -- diffButton event
     --eDiffGo :: Event t ()  <- event0 diffGo command

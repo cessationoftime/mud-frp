@@ -31,10 +31,10 @@ import RBWX.Banana.WX.Additions
 import RBWX.Banana.WX.Core.Core as Core hiding (identity, Identity, empty, newEvent)
 
 
---eCloseNotebookPage :: Frameworks t => Core.Notebook a -> Moment t (Event t EventAuiNotebook)
+--eCloseNotebookPage :: Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
 --eCloseNotebookPage notebook =  event1 notebook notebookOnPageCloseEvent
 
---eClosedNotebookPage ::  Frameworks t => Core.Notebook a -> Moment t (Event t EventAuiNotebook)
+--eClosedNotebookPage ::  Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
 --eClosedNotebookPage notebook =  event1 notebook notebookOnPageClosedEvent
 
 eChangedNotebookPage ::  Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
