@@ -15,12 +15,9 @@
 
 module Controls.Mud.MapEditor (mapEditorIO,gridHeight,gridWidth) where
 
-import Reactive.Banana
-import Reactive.Banana.WX
 import System.Random
 import Paths (getDataFile)
 import RBWX.RBWX
-import WxAdditions
 type BlockPosition = (Int,Int)
 type BlockMap = [(BlockPosition,Bool)]
 type Position = Point2 Int

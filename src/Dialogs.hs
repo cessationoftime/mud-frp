@@ -14,10 +14,6 @@
 -----------------------------------------------------------------------------
 
 module Dialogs where
-
-import Reactive.Banana
-import Reactive.Banana.WX
-import Reactive.Banana.Frameworks
 import RBWX.RBWX
 
 

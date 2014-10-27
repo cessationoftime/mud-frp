@@ -12,12 +12,12 @@
 --
 -----------------------------------------------------------------------------
 
-module RBWX.ContextMenu where
+module RBWX.Banana.WX.Core.ContextMenu where
 
 
 import Reactive.Banana
 import Reactive.Banana.WX
-import RBWX.Lift hiding (Event, newEvent)
+import RBWX.Banana.WX.Core.Lift hiding (Event, newEvent)
 import Graphics.UI.WX as WXC
 
 contextMenuEvent :: WXC.Event (Window a) (IO ())

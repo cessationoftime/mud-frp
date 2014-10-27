@@ -12,19 +12,20 @@
 --
 -----------------------------------------------------------------------------
 
-module RBWX.Lift
-  (RBWX.Lift.menuSub,
-   RBWX.Lift.menuItem,
-   RBWX.Lift.menuQuit,
-   RBWX.Lift.menuPane,
-   RBWX.Lift.statusField,
-   RBWX.Lift.frame,
-   RBWX.Lift.menuLine,
-   RBWX.Lift.set,
-   RBWX.Lift.button,
-   RBWX.Lift.panel,
-   RBWX.Lift.timer,
-   RBWX.Lift.windowGetId,
+module RBWX.Banana.WX.Core.Lift
+  (RBWX.Banana.WX.Core.Lift.menuSub,
+   RBWX.Banana.WX.Core.Lift.menuItem,
+   RBWX.Banana.WX.Core.Lift.menuQuit,
+   RBWX.Banana.WX.Core.Lift.menuPane,
+   RBWX.Banana.WX.Core.Lift.statusField,
+   RBWX.Banana.WX.Core.Lift.frame,
+   RBWX.Banana.WX.Core.Lift.menuLine,
+   RBWX.Banana.WX.Core.Lift.set,
+   RBWX.Banana.WX.Core.Lift.button,
+   RBWX.Banana.WX.Core.Lift.panel,
+   RBWX.Banana.WX.Core.Lift.timer,
+   RBWX.Banana.WX.Core.Lift.windowGetId,
+   RBWX.Banana.WX.Core.Lift.auiNotebookGetCurrentPage,
    WindowId(..),
    module WX_,
    module WXCore_,
@@ -40,7 +41,7 @@ import Graphics.UI.WX as WX_
  -- )
 
 import Graphics.UI.WXCore as WXCore_
-  hiding (Event, windowGetId)
+  hiding (Event, windowGetId,auiNotebookGetCurrentPage)
 
 import Graphics.UI.WXCore as WXCore
   hiding (Event)
@@ -56,6 +57,9 @@ import Graphics.UI.WX.Classes as WxClasses
 import qualified Graphics.UI.WX as WX
 import Reactive.Banana
 import Reactive.Banana.WX hiding (newEvent)
+import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Class
+import Control.Monad
 
 menuSub :: Frameworks t => Menu b -> Menu a -> [Prop (MenuItem ())] -> Moment t (MenuItem ())
 menuSub = liftIO3 WX.menuSub
@@ -102,10 +106,16 @@ liftIO3 :: Frameworks t => (a -> b -> c -> IO d) -> a -> b -> c -> Moment t d
 liftIO3 funct aa bb = liftIO . funct aa bb
 
 
-newtype WindowId = WindowId Int deriving (Eq)
+newtype WindowId = WindowId Int deriving (Eq,Show)
 
 windowGetId :: forall a. Window a -> IO WindowId
 windowGetId w =  do id <- WXCore.windowGetId w
                     return $ WindowId id
+
+auiNotebookGetCurrentPage :: AuiNotebook a ->  MaybeT IO (Window ())
+auiNotebookGetCurrentPage n = do
+      currentPage <- lift $ WXCore.auiNotebookGetCurrentPage n
+      if objectIsNull currentPage then mzero else return currentPage
+
 
 

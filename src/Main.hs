@@ -1,11 +1,9 @@
-import Reactive.Banana
-import Reactive.Banana.WX
 import Dialogs
 import SourceEditor
 import Controls.Mud.MapEditor
 import RBWX.RBWX
 import Aui
-import WxAdditions
+import Data.List (find)
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
@@ -92,27 +90,36 @@ networkDescription = do
     eOpenFileOk :: Event t FilePath <- openFileDialogOkEvent frame1 eOpenMenuItem
     eOpenNotebookPage :: Event t NotebookPage <- addSourcePage notebook `mapIOreaction` eOpenFileOk
 
-    eCloseNotebookPage :: Event t EventAuiNotebook <- event1 notebook auiNotebookOnPageClosedEvent
+   -- eCloseNotePage <- eCloseNotebookPage notebook
+
+    eActiveNotePage <- eActiveNotebookPage notebook
 
     let eLoadNotebookPage :: Event t NotebookPage =  eNewNotebookPage `union` eOpenNotebookPage
-
-    let eSaveFilePath :: Event t (Maybe FilePath) =  bFilePath <@ eSaveMenuItem
-        bFilePath :: Behavior t (Maybe FilePath) =  stepper Nothing (Just <$> eOpenFileOk)
-        doSave :: StyledTextCtrl () -> Maybe FilePath -> IO()
-        doSave s  (Just x) = styledTextCtrlSaveFile s x >> return ()
-        doSave s  Nothing = return ()
-
-        ePages :: Event t [NotebookPage]
-        ePages = accumE [] $
-            (add <$> eLoadNotebookPage) `union` (remove <$> eCloseNotebookPage)
+{-
+        bPages :: Behavior t [NotebookPage]
+        bPages = accumB [] $
+            (add <$> eLoadNotebookPage) `union` (filterNotPage <$> eCloseNotePage)
           where
             add  nb nbs = nb:nbs
-            remove (EventAuiNotebook _ newSel _) nbs =  filter (isNotebookPage newSel) nbs
+-}
+        filterPage (EventAuiNotebook _ newSel _) =  filter (isNotebookPage newSel)
+        filterNotPage (EventAuiNotebook _ newSel _) =  filter (not . isNotebookPage newSel)
+        findPage :: [NotebookPage] -> WindowSelection -> Maybe NotebookPage
+        findPage notes winSelect = find (isNotebookPage winSelect) notes
 
+    --    bActiveNBPage :: Behavior t (Maybe NotebookPage) = stepper Nothing $ (findPage <$> bPages) <@> eActiveNotePage
 
+      --  eSaveNBPage :: Event t (Maybe NotebookPage) =  bActiveNBPage <@ eSaveMenuItem
+
+        doSave :: Maybe NotebookPage -> IO()
+        doSave (Just (SourceNotebookPage _ ctrl fp)) = styledTextCtrlSaveFile ctrl fp >> return ()
+        doSave Nothing = return ()
+
+  --  reactimate $ doSave <$> eSaveNBPage
+    return ()
     -- diffButton event
-    eDiffGo :: Event t ()  <- event0 diffGo command
-    bStyle :: Behavior t Bool <- behavior mapEditor tabTraversal
+    --eDiffGo :: Event t ()  <- event0 diffGo command
+    --bStyle :: Behavior t Bool <- behavior mapEditor tabTraversal
 {-
     let
         eStyle :: Event t Bool = bStyle <@ eDiffGo
@@ -121,10 +128,10 @@ networkDescription = do
 
     reactimate $ setStyleText <$> eStringStyle
          reactimate $ (styledTextCtrlAddText sourceEditorCtrlOfPage) ("what the fuck\n") <$ (unions [eDoItMenuButton,eAutoContextItem] )
-
-    reactimate $ doSave sourceEditorCtrlOfPage <$> eSaveFilePath
 -}
-    return ()
+
+
+  -- return ()
 
     -- status bar
     --   let bstatus :: Behavior t String

@@ -12,11 +12,11 @@ flag threaded
     Default: False
 
 executable mudFrp
-    build-depends: split >=0.2.2 && <0.3,
-                   executable-path >=0.0.3 && <0.1, filepath >=1.3.0.1 && <1.4,
-                   wx ==0.91.*, wxcore ==0.91.*, reactive-banana >=0.8.0.0 && <0.9,
-                   reactive-banana-wx ==0.8.0.1, random >=1.0.1.1 && <1.1,
-                   base >=4.2 && <5
+    build-depends: ghc >=7.6.3 && <7.7, transformers == 0.3.0.0,
+                   split >=0.2.2 && <0.3, executable-path >=0.0.3 && <0.1,
+                   filepath >=1.3.0.1 && <1.4, wx ==0.91.*, wxcore ==0.91.*,
+                   reactive-banana >=0.8.0.0 && <0.9, reactive-banana-wx ==0.8.0.1,
+                   random >=1.0.1.1 && <1.1, base >=4.2 && <5
 
     if flag(threaded)
         buildable: True
@@ -26,6 +26,8 @@ executable mudFrp
     default-language: Haskell2010
     default-extensions: ScopedTypeVariables TupleSections ViewPatterns
     hs-source-dirs: src
-    other-modules: Aui RBWX.RBWX RBWX.Lift RBWX.ContextMenu Dialogs
-                   Controls.Mud.MapEditor SourceEditor WxAdditions Paths_mudFrp Paths
+    other-modules: RBWX.Banana.Banana Aui RBWX.RBWX
+                   RBWX.Banana.WX.Additions RBWX.Banana.WX.Core.Lift
+                   RBWX.Banana.WX.Core.ContextMenu RBWX.Banana.WX.Core.Core Dialogs
+                   Controls.Mud.MapEditor SourceEditor Paths_mudFrp Paths
 

@@ -13,8 +13,6 @@
 -----------------------------------------------------------------------------
 module SourceEditor (sourceEditor,sourceEditorLoadFile,openFileDialogOkEvent, SourceEditorCtrl) where
 
-import Reactive.Banana
-import Reactive.Banana.WX
 import Data.Maybe (fromMaybe)
 import Data.IORef
 import Dialogs
