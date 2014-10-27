@@ -6,9 +6,9 @@ To reproduce:
 
 run samples/notebook under GTK. In the File menu of the sample, choose Type>AuiNotebook.  Click the Veto tab, then click on some other tab, choose Yes when the veto dialog appears. You should have switched tabs.  Now click on any other tab.  You will receive the following Assertion Failed message:
 
-{{{
+```
 ../src/common/wincmn.cpp(3272): assert "!wxMouseCapture::IsInCaptureStack(this)" failed in CaptureMouse(): Recapturing the mouse in the same window? 
-}}}
+```
 
 What is happening:
 
@@ -17,9 +17,9 @@ The veto dialog is calling wxWindowGTK::GTKReleaseMouseAndNotify(), but despite 
 
 The fix:
 
-'''In file: src/gtk/window.cpp'''
+In file: src/gtk/window.cpp
 
-{{{
+```cpp
 void wxWindowGTK::GTKReleaseMouseAndNotify()
 {
     DoReleaseMouse();
@@ -27,11 +27,11 @@ void wxWindowGTK::GTKReleaseMouseAndNotify()
     evt.SetEventObject( this );
     HandleWindowEvent( evt );
 }
-}}}
+```
 
-'''DoReleaseMouse() should change to ReleaseMouse()'''
+DoReleaseMouse() should change to ReleaseMouse()
 
-{{{
+```cpp
 void wxWindowGTK::GTKReleaseMouseAndNotify()
 {
     ReleaseMouse();
@@ -39,4 +39,4 @@ void wxWindowGTK::GTKReleaseMouseAndNotify()
     evt.SetEventObject( this );
     HandleWindowEvent( evt );
 }
-}}}
+```
