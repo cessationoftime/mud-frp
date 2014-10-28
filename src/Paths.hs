@@ -4,7 +4,7 @@ module Paths (getDataFile) where
 import System.FilePath
 import System.IO.Unsafe
 
-
+--tes
 -- using cabal
 import System.Environment.Executable
 import System.Info

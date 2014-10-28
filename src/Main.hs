@@ -4,6 +4,7 @@ import Controls.Mud.MapEditor
 import RBWX.RBWX
 import Aui
 import Data.List (find)
+import Data.Maybe (fromMaybe)
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
@@ -11,7 +12,7 @@ import Data.List (find)
 main :: IO ()
 main = start mainNetwork
 
-
+--testi
 {-----------------------------------------------------------------------------
     Compile and actuate Reactive Network
 ------------------------------------------------------------------------------}
@@ -80,45 +81,27 @@ networkDescription = do
     -- Events
 
 
-
+    NotebookEvents _ _ _ _ _ eChangeNotebookPage eSwitchNotebookPage _ _ <-
+        createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem
 
     liftIO $ auiManagerUpdate aui
 
-    eNewFileOk :: Event t FilePath  <- openFileDialogOkEvent frame1 eNewMenuItem
-    eNewNotebookPage :: Event t NotebookPage <- addNewSourcePage notebook `mapIOreaction` eNewFileOk
 
-    eOpenFileOk :: Event t FilePath <- openFileDialogOkEvent frame1 eOpenMenuItem
-    eOpenNotebookPage :: Event t NotebookPage <- addSourcePage notebook `mapIOreaction` eOpenFileOk
-
-   -- eCloseNotebookPage :: Event t EventAuiNotebook <- event1 notebook notebookOnPageClosedEvent
-
-
-
-    eActiveNotePage <- eActiveNotebookPage notebook
-
-
-    let eLoadNotebookPage :: Event t NotebookPage =  eNewNotebookPage `union` eOpenNotebookPage
-{-
-        bPages :: Behavior t [NotebookPage]
-        bPages = accumB [] $
-            (add <$> eLoadNotebookPage) `union` (filterNotPage <$> eCloseNotebookPage)
-          where
-            add  nb nbs = nb:nbs
--}
-        filterPage (EventAuiNotebook _ newSel _) =  filter (isNotebookPage newSel)
-        filterNotPage (EventAuiNotebook _ newSel _) =  filter (not . isNotebookPage newSel)
-        findPage :: [NotebookPage] -> WindowSelection -> Maybe NotebookPage
-        findPage notes winSelect = find (isNotebookPage winSelect) notes
-
-       -- bActiveNBPage :: Behavior t (Maybe NotebookPage) = stepper Nothing $ (findPage <$> bPages) <@> eActiveNotePage
-
-      --  eSaveNBPage :: Event t (Maybe NotebookPage) =  bActiveNBPage <@ eSaveMenuItem
+    let bActiveNBPage = stepper Nothing eSwitchNotebookPage
+    let eSaveNBPage :: Event t (Maybe NotebookPage) =  bActiveNBPage <@ eSaveMenuItem
 
         doSave :: Maybe NotebookPage -> IO()
         doSave (Just (SourceNotebookPage _ ctrl fp)) = styledTextCtrlSaveFile ctrl fp >> return ()
         doSave Nothing = return ()
 
-   -- reactimate $ doSave <$> eSaveNBPage
+    reactimate $ doSave <$> eSaveNBPage
+
+    let showNBMaybe ::  Maybe NotebookPage => FilePath
+        showNBMaybe (Just (SourceNotebookPage _ _ fp) ) = fp
+        showNBMaybe _ = ""
+
+    sink status [text :== showNBMaybe <$> bActiveNBPage ]
+
     return ()
     -- diffButton event
     --eDiffGo :: Event t ()  <- event0 diffGo command
@@ -137,9 +120,9 @@ networkDescription = do
   -- return ()
 
     -- status bar
-    --   let bstatus :: Behavior t String
-     --   bstatus = (\r -> "total Blocks: unknown") <$> bBlockMap
-       -- bstatus = (\r -> "total Blocks: " ++ show (length r)) <$> bBlockMap
-    --     set status [text :== "total Blocks: unknown"]
+     --  let bstatus :: Behavior t String
+    --   bstatus = (\r -> "total Blocks: unknown") <$> bBlockMap
+    --   bstatus = (\r -> "total Blocks: " ++ show (length r)) <$> bBlockMap
+
 
 

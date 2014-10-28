@@ -25,12 +25,12 @@ windowGetOnKeyDown1 window
 --notebookOnPageCloseEvent = newAuiEvent "auiNotebookOnPageClose" wxEVT_AUINOTEBOOK_PAGE_CLOSE
 
 -- AUINotebook PageClosed
---notebookOnPageClosedEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
---notebookOnPageClosedEvent = newAuiEvent "auiNotebookOnPageClosed" wxEVT_AUINOTEBOOK_PAGE_CLOSED
+notebookOnPageClosedEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+notebookOnPageClosedEvent = newAuiEvent "auiNotebookOnPageClosed" wxEVT_AUINOTEBOOK_PAGE_CLOSED
 
 -- AUINotebook PageChange
-notebookOnPageChangingEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
-notebookOnPageChangingEvent = newAuiEvent "auiNotebookOnPageChanging" wxEVT_AUINOTEBOOK_PAGE_CHANGING
+--notebookOnPageChangingEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+--notebookOnPageChangingEvent = newAuiEvent "auiNotebookOnPageChanging" wxEVT_AUINOTEBOOK_PAGE_CHANGING
 
 
 --split into two events. ChangedTo and ChangedFrom based on the eventObject
