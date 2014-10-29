@@ -81,7 +81,7 @@ networkDescription = do
     -- Events
 
 
-    NotebookEvents _ _ _ _ _ eChangedNotebookPage eSwitchNotebookPage eCloseNotebookPage eLastClosed bPages <-
+    NotebookEvents _ _ _ _ _ _ _ eChangedNotebookPage eSwitchNotebookPage eCloseNotebookPage eLastClosed bPages <-
         createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem
 
     liftIO $ auiManagerUpdate aui

@@ -40,11 +40,6 @@ newNotebook frame1 = do
  -- windowThaw notebook
   return (notebook)
 
-addNewSourcePage :: AuiNotebook () -> FilePath -> IO NotebookPage
-addNewSourcePage notebook filePath = do
-  snp <- createSourcePage notebook filePath
-  _ <- internalAddNewSourcePage notebook snp
-  return snp
 
 createSourcePage :: AuiNotebook () -> FilePath -> IO NotebookPage
 createSourcePage notebook filePath = do
@@ -52,17 +47,16 @@ createSourcePage notebook filePath = do
   id <- windowGetId sourceEditorCtrl
   return $ SourceNotebookPage id sourceEditorCtrl filePath
 
-internalAddNewSourcePage :: AuiNotebook () -> NotebookPage -> IO ()
-internalAddNewSourcePage notebook (SourceNotebookPage id sourceEditorCtrl filePath) = do
+addEmptySourceTab :: AuiNotebook () -> NotebookPage -> IO ()
+addEmptySourceTab notebook (SourceNotebookPage id sourceEditorCtrl filePath) = do
   _ <- auiNotebookAddPageWithBitmap notebook sourceEditorCtrl (takeFileName filePath) True nullBitmap
   return ()
 
-addSourcePage :: AuiNotebook () -> FilePath -> IO NotebookPage
-addSourcePage notebook filePath = do
-  snp@(SourceNotebookPage _ sourceEditorCtrl _) <- createSourcePage notebook filePath
-  _ <- internalAddNewSourcePage notebook snp
+addSourcePage :: AuiNotebook () -> NotebookPage -> IO ()
+addSourcePage notebook pg@(SourceNotebookPage _ sourceEditorCtrl filePath) = do
+  addEmptySourceTab notebook pg
   sourceEditorLoadFile sourceEditorCtrl filePath
-  return snp
+  return ()
 
 
 class IsNotebookPage a where
@@ -75,18 +69,23 @@ instance IsNotebookPage WindowSelection where
   matchesNotebookPage (WindowSelection (Just winId) _) (SourceNotebookPage id _ _) = winId == id
   matchesNotebookPage (WindowSelection Nothing _) (SourceNotebookPage id _ _) = False
 
-
+-- TODO: make newFileDialogOK conduct a NotebookPage, make openFileDialogOk conduct a notebookPage
+-- TODO: fix the inconsistency of switchedNotebookPage
 data NotebookEvents t = NotebookEvents {
-  -- | newFileDialog OK button press, conducts FilePath of selected file
-  newFileDialogOk :: Event t FilePath,
-  -- | new page added to notebook, conducts the page added
-  newNoteBookPage :: Event t NotebookPage,
-  -- | openFileDialog OK button press, conducts FilePath of selected file
-  openFileDialogOk :: Event t FilePath,
-  -- | newly opened page added to notebook, conducts the page added
-  openNoteBookPage  :: Event t NotebookPage,
-  -- | page added to notebook (open or new), conducts the page added
-  addedNoteBookPage :: Event t NotebookPage,
+  -- | on newFileDialog OK button press, conducts FilePath of selected file
+  new1FileDialogOk :: Event t FilePath,
+  -- | on newFileDialog OK button press, conducts page to be added
+  new2FileDialogNotebookPage  :: Event t NotebookPage,
+  -- | on new page added to notebook, conducts the page added
+  new3NoteBookPage :: Event t NotebookPage,
+  -- | on openFileDialog OK button press, conducts FilePath of selected file
+  open1FileDialogOk :: Event t FilePath,
+  -- | on openFileDialog OK button press, conducts the page to be added
+  open2FileDialogNotebookPage  :: Event t NotebookPage,
+  -- | on newly opened page added to notebook, conducts the page added
+  open3NoteBookPage  :: Event t NotebookPage,
+  -- | on page added to notebook, conducts the page added
+  openOrNewNoteBookPage :: Event t NotebookPage,
   -- | notebook page has been changed but not added, also doesn't trigger when pages hit zero
   changedNoteBookPage :: Event t (Maybe NotebookPage),
   -- | the currently selected NotebookPage has been changed or added (active tab), conducts Nothing when last page is about to close
@@ -103,10 +102,12 @@ data NotebookEvents t = NotebookEvents {
 --TODO: can we combine this with creation of the AuiNotebook itself?
 createNotebookEvents :: Frameworks t => AuiNotebook () -> Frame () -> Event t () -> Event t () -> Moment t (NotebookEvents t)
 createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
-    eNewFileOk :: Event t FilePath <- openFileDialogOkEvent frame1 eNewMenuItem
-    eNewNotebookPage :: Event t NotebookPage <- addNewSourcePage notebook `mapIOreaction` eNewFileOk
-    eOpenFileOk :: Event t FilePath <- openFileDialogOkEvent frame1 eOpenMenuItem
-    eOpenNotebookPage :: Event t NotebookPage <- addSourcePage notebook `mapIOreaction` eOpenFileOk
+    eNewFileDialogOk :: Event t FilePath <- openFileDialogOkEvent frame1 eNewMenuItem
+    eNewFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eNewFileDialogOk
+    eNewNotebookPage :: Event t NotebookPage <- (addEmptySourceTab notebook) `ioReaction`  eNewFileDialogNotebookPage
+    eOpenFileDialogOk :: Event t FilePath <- openFileDialogOkEvent frame1 eOpenMenuItem
+    eOpenFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eOpenFileDialogOk
+    eOpenNotebookPage :: Event t NotebookPage <- (addSourcePage notebook) `ioReaction` eOpenFileDialogNotebookPage
     eCloseEventAuiNoteBook :: Event t EventAuiNotebook <- event1 notebook notebookOnPageCloseEvent
     eChangedEventAuiNoteBook :: Event t EventAuiNotebook <- eChangedNotebookPage notebook
     let eAddedNotebookPage  :: Event t NotebookPage = eNewNotebookPage `union` eOpenNotebookPage
@@ -144,5 +145,8 @@ createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
         eLastClose :: Event t (Maybe NotebookPage)
         eLastClose = whenE bOnePageLeft eCloseNotebookPage
 
-    return $ NotebookEvents eNewFileOk eNewNotebookPage eOpenFileOk eOpenNotebookPage eAddedNotebookPage eChangedNotebookPage eSwitchedNotebookPage eCloseNotebookPage eLastClose bPages
+    return $ NotebookEvents eNewFileDialogOk eNewFileDialogNotebookPage eNewNotebookPage
+                            eOpenFileDialogOk eOpenFileDialogNotebookPage eOpenNotebookPage
+                            eAddedNotebookPage eChangedNotebookPage eSwitchedNotebookPage
+                            eCloseNotebookPage eLastClose bPages
 
