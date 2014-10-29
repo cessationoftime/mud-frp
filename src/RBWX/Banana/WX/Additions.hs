@@ -21,12 +21,12 @@ windowGetOnKeyDown1 window
   = unsafeWindowGetHandlerState window wxEVT_KEY_DOWN (\eventKey -> return ())
 
 -- AUI Notebook PageClose
---notebookOnPageCloseEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
---notebookOnPageCloseEvent = newAuiEvent "auiNotebookOnPageClose" wxEVT_AUINOTEBOOK_PAGE_CLOSE
+notebookOnPageCloseEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+notebookOnPageCloseEvent = newAuiEvent "auiNotebookOnPageClose" wxEVT_AUINOTEBOOK_PAGE_CLOSE
 
 -- AUINotebook PageClosed
-notebookOnPageClosedEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
-notebookOnPageClosedEvent = newAuiEvent "auiNotebookOnPageClosed" wxEVT_AUINOTEBOOK_PAGE_CLOSED
+--notebookOnPageClosedEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+--notebookOnPageClosedEvent = newAuiEvent "auiNotebookOnPageClosed" wxEVT_AUINOTEBOOK_PAGE_CLOSED
 
 -- AUINotebook PageChange
 --notebookOnPageChangingEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())

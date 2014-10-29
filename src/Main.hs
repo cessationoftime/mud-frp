@@ -81,7 +81,7 @@ networkDescription = do
     -- Events
 
 
-    NotebookEvents _ _ _ _ _ eChangeNotebookPage eSwitchNotebookPage _ _ <-
+    NotebookEvents _ _ _ _ _ eChangedNotebookPage eSwitchNotebookPage eCloseNotebookPage eLastClosed bPages <-
         createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem
 
     liftIO $ auiManagerUpdate aui
@@ -100,7 +100,15 @@ networkDescription = do
         showNBMaybe (Just (SourceNotebookPage _ _ fp) ) = fp
         showNBMaybe _ = ""
 
-    sink status [text :== showNBMaybe <$> bActiveNBPage ]
+    sink status [text :== showNBMaybe <$> bActiveNBPage  ]
+
+    --    bTotal :: Behavior t Int
+    --    bTotal = accumB 0 $ (+1) <$ eSwitchNotebookPage
+
+   -- sink status [text :== show <$> bTotal ]
+
+
+
 
     return ()
     -- diffButton event

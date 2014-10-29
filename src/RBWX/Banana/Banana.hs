@@ -18,8 +18,8 @@ module RBWX.Banana.WX.Additions,
   module Core,
   module Reactive.Banana,
   module Reactive.Banana.WX,
-  --eCloseNotebookPage,
-  eClosedNotebookPage,
+  eCloseNotebookPage,
+  --eClosedNotebookPage,
   eChangedNotebookPage
   --eChangingNotebookPage,
   --eNotebookPage,
@@ -33,11 +33,11 @@ import RBWX.Banana.WX.Core.Core as Core hiding (identity, Identity, empty, newEv
 
 --import Graphics.UI.WX.Events as WX (Event)
 
---eCloseNotebookPage :: Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
---eCloseNotebookPage notebook =  event1 notebook notebookOnPageCloseEvent
+eCloseNotebookPage :: Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
+eCloseNotebookPage notebook =  event1 notebook notebookOnPageCloseEvent
 
-eClosedNotebookPage ::  Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
-eClosedNotebookPage notebook =  event1 notebook notebookOnPageClosedEvent
+--eClosedNotebookPage ::  Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
+--eClosedNotebookPage notebook =  event1 notebook notebookOnPageClosedEvent
 
 eChangedNotebookPage ::  Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
 eChangedNotebookPage notebook =  event1 notebook notebookOnPageChangedEvent
