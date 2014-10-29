@@ -42,25 +42,26 @@ newNotebook frame1 = do
 
 addNewSourcePage :: AuiNotebook () -> FilePath -> IO NotebookPage
 addNewSourcePage notebook filePath = do
- -- windowFreeze notebook
-  snp@(SourceNotebookPage _ sourceEditorCtrl _) <- internalAddNewSourcePage notebook filePath
---  windowThaw notebook
+  snp <- createSourcePage notebook filePath
+  _ <- internalAddNewSourcePage notebook snp
   return snp
 
-internalAddNewSourcePage :: AuiNotebook () -> FilePath -> IO NotebookPage
-internalAddNewSourcePage notebook filePath = do
+createSourcePage :: AuiNotebook () -> FilePath -> IO NotebookPage
+createSourcePage notebook filePath = do
   sourceEditorCtrl <- sourceEditor notebook []
-  _ <- auiNotebookAddPageWithBitmap notebook sourceEditorCtrl (takeFileName filePath) True nullBitmap
   id <- windowGetId sourceEditorCtrl
-
   return $ SourceNotebookPage id sourceEditorCtrl filePath
+
+internalAddNewSourcePage :: AuiNotebook () -> NotebookPage -> IO ()
+internalAddNewSourcePage notebook (SourceNotebookPage id sourceEditorCtrl filePath) = do
+  _ <- auiNotebookAddPageWithBitmap notebook sourceEditorCtrl (takeFileName filePath) True nullBitmap
+  return ()
 
 addSourcePage :: AuiNotebook () -> FilePath -> IO NotebookPage
 addSourcePage notebook filePath = do
- -- windowFreeze notebook
-  snp@(SourceNotebookPage _ sourceEditorCtrl _) <- internalAddNewSourcePage notebook filePath
+  snp@(SourceNotebookPage _ sourceEditorCtrl _) <- createSourcePage notebook filePath
+  _ <- internalAddNewSourcePage notebook snp
   sourceEditorLoadFile sourceEditorCtrl filePath
- -- windowThaw notebook
   return snp
 
 
@@ -99,7 +100,7 @@ data NotebookEvents t = NotebookEvents {
   pages :: Behavior t ([NotebookPage],Maybe NotebookPage)
   }
 
-
+--TODO: can we combine this with creation of the AuiNotebook itself?
 createNotebookEvents :: Frameworks t => AuiNotebook () -> Frame () -> Event t () -> Event t () -> Moment t (NotebookEvents t)
 createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
     eNewFileOk :: Event t FilePath <- openFileDialogOkEvent frame1 eNewMenuItem
