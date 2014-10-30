@@ -69,28 +69,31 @@ instance IsNotebookPage WindowSelection where
   matchesNotebookPage (WindowSelection (Just winId) _) (SourceNotebookPage id _ _) = winId == id
   matchesNotebookPage (WindowSelection Nothing _) (SourceNotebookPage id _ _) = False
 
--- TODO: make newFileDialogOK conduct a NotebookPage, make openFileDialogOk conduct a notebookPage
--- TODO: fix the inconsistency of switchedNotebookPage
+-- TODO: fix the inconsistency of change events
+-- TODO: figure out why changing event can crash the program
 data NotebookEvents t = NotebookEvents {
   -- | on newFileDialog OK button press, conducts FilePath of selected file
-  new1FileDialogOk :: Event t FilePath,
+  new1DialogPath :: Event t FilePath,
   -- | on newFileDialog OK button press, conducts page to be added
-  new2FileDialogNotebookPage  :: Event t NotebookPage,
+  new2DialogPage  :: Event t NotebookPage,
   -- | on new page added to notebook, conducts the page added
-  new3NoteBookPage :: Event t NotebookPage,
+  new3Page :: Event t NotebookPage,
   -- | on openFileDialog OK button press, conducts FilePath of selected file
   open1FileDialogOk :: Event t FilePath,
   -- | on openFileDialog OK button press, conducts the page to be added
-  open2FileDialogNotebookPage  :: Event t NotebookPage,
+  open2FileDialogOkNotebookPage  :: Event t NotebookPage,
   -- | on newly opened page added to notebook, conducts the page added
   open3NoteBookPage  :: Event t NotebookPage,
+   -- | on about to add page to notebook, conducts the page to be added
+  addNoteBookPage :: Event t NotebookPage,
   -- | on page added to notebook, conducts the page added
-  openOrNewNoteBookPage :: Event t NotebookPage,
-  -- | notebook page has been changed but not added, also doesn't trigger when pages hit zero
-  changedNoteBookPage :: Event t (Maybe NotebookPage),
-  -- | the currently selected NotebookPage has been changed or added (active tab), conducts Nothing when last page is about to close
+  addedNoteBookPage :: Event t NotebookPage,
+  -- | the currently selected NotebookPage is about to be changed or added (active tab), should conduct Nothing when the first page is about to be opened
+  -- | NOTE: this function can crash the program
+ -- changingNoteBookPage :: Event t (Maybe NotebookPage),
+  -- | the currently selected NotebookPage has been changed or added (active tab), conducts Nothing when last page is about to close, should conduct nothing when the last page has closed
   -- | NOTE: this function is inconsistent, such that most events occur after the fact, except for when the last page closes, which occurs prior to closing.
-  switchedNoteBookPage :: Event t (Maybe NotebookPage),
+  changedNoteBookPage :: Event t (Maybe NotebookPage),
   -- | notebook page is about to close, conducts the page about to close
   closeNoteBookPage :: Event t (Maybe NotebookPage),
   -- | last page in the notebook is about to close, conducts the page about to close
@@ -109,11 +112,15 @@ createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
     eOpenFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eOpenFileDialogOk
     eOpenNotebookPage :: Event t NotebookPage <- (addSourcePage notebook) `ioReaction` eOpenFileDialogNotebookPage
     eCloseEventAuiNoteBook :: Event t EventAuiNotebook <- event1 notebook notebookOnPageCloseEvent
+   -- eChangingEventAuiNoteBook :: Event t EventAuiNotebook <- eChangingNotebookPage notebook
     eChangedEventAuiNoteBook :: Event t EventAuiNotebook <- eChangedNotebookPage notebook
-    let eAddedNotebookPage  :: Event t NotebookPage = eNewNotebookPage `union` eOpenNotebookPage
-        eChangedNotebookPage :: Event t (Maybe NotebookPage) =
-            fromWindowSelection2NotebookPage $ (\(EventAuiNotebook nbCurrent _ _) -> nbCurrent) `fmap` eChangedEventAuiNoteBook
-        eSwitchedNotebookPage  :: Event t (Maybe NotebookPage) =  (Nothing <$ eLastClose) `union` (Just `fmap` (eAddedNotebookPage `union` (filterJust eChangedNotebookPage)))
+    let eAddNotebookPage  :: Event t NotebookPage = eNewFileDialogNotebookPage `union` eOpenFileDialogNotebookPage
+        eAddedNotebookPage  :: Event t NotebookPage = eNewNotebookPage `union` eOpenNotebookPage
+        eChangedNotebookPage  :: Event t (Maybe NotebookPage) =
+          let eChanged = fromWindowSelection2NotebookPage $ (\(EventAuiNotebook nbCurrent _ _) -> nbCurrent) `fmap` eChangedEventAuiNoteBook
+          in (Nothing <$ eLastClose) `union` eChanged
+  --      eChangingNotebookPage :: Event t (Maybe NotebookPage) =
+--          fromWindowSelection2NotebookPage $ (\(EventAuiNotebook _ _ oldSel) -> oldSel) `fmap` eChangingEventAuiNoteBook
         eCloseNotebookPage :: Event t (Maybe NotebookPage) =
           fromWindowSelection2NotebookPage $ (\(EventAuiNotebook _ newSel _) -> newSel) `fmap` eCloseEventAuiNoteBook
 
@@ -133,7 +140,7 @@ createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
         -- | represents the current pages and the last closed page
         bPages :: Behavior t ([NotebookPage],Maybe NotebookPage)
         bPages = accumB ([],Nothing) $
-            (add `fmap` eAddedNotebookPage) `union` (remove `fmap` eCloseEventAuiNoteBook {- this must be the close event, rather than the closed event. As the close event provides more information. -})
+            (add `fmap` eAddNotebookPage) `union` (remove `fmap` eCloseEventAuiNoteBook {- this must be the close event, rather than the closed event. As the close event provides more information. -})
           where
             add nb (nbs,mbClosed) = (nb:nbs,mbClosed)
             remove nbSelect (nbs,mbClosed)  = filterNotPage nbSelect nbs
@@ -147,6 +154,8 @@ createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
 
     return $ NotebookEvents eNewFileDialogOk eNewFileDialogNotebookPage eNewNotebookPage
                             eOpenFileDialogOk eOpenFileDialogNotebookPage eOpenNotebookPage
-                            eAddedNotebookPage eChangedNotebookPage eSwitchedNotebookPage
+                            eAddedNotebookPage eAddedNotebookPage
+                            --eChangingNotebookPage
+                            eChangedNotebookPage
                             eCloseNotebookPage eLastClose bPages
 

@@ -29,8 +29,8 @@ notebookOnPageCloseEvent = newAuiEvent "auiNotebookOnPageClose" wxEVT_AUINOTEBOO
 --notebookOnPageClosedEvent = newAuiEvent "auiNotebookOnPageClosed" wxEVT_AUINOTEBOOK_PAGE_CLOSED
 
 -- AUINotebook PageChange
---notebookOnPageChangingEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
---notebookOnPageChangingEvent = newAuiEvent "auiNotebookOnPageChanging" wxEVT_AUINOTEBOOK_PAGE_CHANGING
+notebookOnPageChangingEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+notebookOnPageChangingEvent = newAuiEvent "auiNotebookOnPageChanging" wxEVT_AUINOTEBOOK_PAGE_CHANGING
 
 
 --split into two events. ChangedTo and ChangedFrom based on the eventObject

@@ -81,13 +81,15 @@ networkDescription = do
     -- Events
 
 
-    NotebookEvents _ _ _ _ _ _ _ eChangedNotebookPage eSwitchNotebookPage eCloseNotebookPage eLastClosed bPages <-
-        createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem
+    NotebookEvents _ _ _ _ _ _ _ _
+      --eChangingNotebookPage
+      eChangedNotebookPage eCloseNotebookPage eLastClosed bPages <-
+      createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem
 
     liftIO $ auiManagerUpdate aui
 
 
-    let bActiveNBPage = stepper Nothing eSwitchNotebookPage
+    let bActiveNBPage = stepper Nothing eChangedNotebookPage
     let eSaveNBPage :: Event t (Maybe NotebookPage) =  bActiveNBPage <@ eSaveMenuItem
 
         doSave :: Maybe NotebookPage -> IO()
@@ -102,8 +104,8 @@ networkDescription = do
 
     sink status [text :== showNBMaybe <$> bActiveNBPage  ]
 
-    --    bTotal :: Behavior t Int
-    --    bTotal = accumB 0 $ (+1) <$ eSwitchNotebookPage
+   --     bTotal :: Behavior t Int
+    --    bTotal = accumB 0 $ (+1) <$ eChangingNotebookPage
 
    -- sink status [text :== show <$> bTotal ]
 
