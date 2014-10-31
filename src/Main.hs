@@ -98,13 +98,12 @@ networkDescription = do
 
   --  reactimate $ doSave <$> eSaveNBPage
 
-    let showNBMaybe ::  Maybe (Int,Int) => FilePath
-        showNBMaybe (Just (x, y) ) = show x ++ " " ++ show y
+    let showNBMaybe ::  Maybe (Int,Int) -> FilePath
+        showNBMaybe (Just (x, y)) = show x ++ " " ++ show y
         showNBMaybe _ = ""
 
-        changeList :: [(Int,Int)] => [(Int,Int)] => [(Int,Int)]
+        changeList :: [(Int,Int)] -> [(Int,Int)] -> [(Int,Int)]
         changeList y [] = y
-       -- changeList y x | length x > 2 = y
         changeList y x = x ++ y
 {-
     sink status [text :== showNBMaybe <$> bActiveNBPage  ]
