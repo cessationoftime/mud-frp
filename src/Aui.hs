@@ -69,8 +69,11 @@ instance IsNotebookPage WindowSelection where
   matchesNotebookPage (WindowSelection (Just winId) _) (SourceNotebookPage id _ _) = winId == id
   matchesNotebookPage (WindowSelection Nothing _) (SourceNotebookPage id _ _) = False
 
+--TODO: create custom notebook extending AUI notebook
+
 -- TODO: fix the inconsistency of change events
--- TODO: figure out why changing event can crash the program
+-- TODO: figure out why changing event can crash the program, probably a problem with the c bindings
+-- !!!!CHANGING events cause crashes because you are accessing the index AFTER the fact!!!! INDEXOUTOFRANGE EXCEPTION
 data NotebookEvents t = NotebookEvents {
   -- | on newFileDialog OK button press, conducts FilePath of selected file
   new1DialogPath :: Event t FilePath,
@@ -89,8 +92,8 @@ data NotebookEvents t = NotebookEvents {
   -- | on page added to notebook, conducts the page added
   addedNoteBookPage :: Event t NotebookPage,
   -- | the currently selected NotebookPage is about to be changed or added (active tab), should conduct Nothing when the first page is about to be opened
-  -- | NOTE: this function can crash the program
- -- changingNoteBookPage :: Event t (Maybe NotebookPage),
+  -- | NOTE: this function can crash the program,  probably a problem with the c bindings
+  changingNoteBookPage :: Event t (Maybe (Int,Int)),
   -- | the currently selected NotebookPage has been changed or added (active tab), conducts Nothing when last page is about to close, should conduct nothing when the last page has closed
   -- | NOTE: this function is inconsistent, such that most events occur after the fact, except for when the last page closes, which occurs prior to closing.
   changedNoteBookPage :: Event t (Maybe NotebookPage),
@@ -112,15 +115,14 @@ createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
     eOpenFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eOpenFileDialogOk
     eOpenNotebookPage :: Event t NotebookPage <- (addSourcePage notebook) `ioReaction` eOpenFileDialogNotebookPage
     eCloseEventAuiNoteBook :: Event t EventAuiNotebook <- event1 notebook notebookOnPageCloseEvent
-   -- eChangingEventAuiNoteBook :: Event t EventAuiNotebook <- eChangingNotebookPage notebook
+    eChangingEventAuiNoteBook :: Event t (Int,Int) <- eChangingNotebookPage notebook
     eChangedEventAuiNoteBook :: Event t EventAuiNotebook <- eChangedNotebookPage notebook
     let eAddNotebookPage  :: Event t NotebookPage = eNewFileDialogNotebookPage `union` eOpenFileDialogNotebookPage
         eAddedNotebookPage  :: Event t NotebookPage = eNewNotebookPage `union` eOpenNotebookPage
         eChangedNotebookPage  :: Event t (Maybe NotebookPage) =
           let eChanged = fromWindowSelection2NotebookPage $ (\(EventAuiNotebook nbCurrent _ _) -> nbCurrent) `fmap` eChangedEventAuiNoteBook
           in (Nothing <$ eLastClose) `union` eChanged
-  --      eChangingNotebookPage :: Event t (Maybe NotebookPage) =
---          fromWindowSelection2NotebookPage $ (\(EventAuiNotebook _ _ oldSel) -> oldSel) `fmap` eChangingEventAuiNoteBook
+        eChangingNotebookPage :: Event t (Maybe (Int,Int)) = Just `fmap` eChangingEventAuiNoteBook
         eCloseNotebookPage :: Event t (Maybe NotebookPage) =
           fromWindowSelection2NotebookPage $ (\(EventAuiNotebook _ newSel _) -> newSel) `fmap` eCloseEventAuiNoteBook
 
@@ -137,7 +139,7 @@ createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
           in  (m,listToMaybe n)
 
 
-        -- | represents the current pages and the last closed page
+        -- | represents the current pages and the last closed page, but in random order
         bPages :: Behavior t ([NotebookPage],Maybe NotebookPage)
         bPages = accumB ([],Nothing) $
             (add `fmap` eAddNotebookPage) `union` (remove `fmap` eCloseEventAuiNoteBook {- this must be the close event, rather than the closed event. As the close event provides more information. -})
@@ -155,7 +157,7 @@ createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
     return $ NotebookEvents eNewFileDialogOk eNewFileDialogNotebookPage eNewNotebookPage
                             eOpenFileDialogOk eOpenFileDialogNotebookPage eOpenNotebookPage
                             eAddedNotebookPage eAddedNotebookPage
-                            --eChangingNotebookPage
+                            eChangingNotebookPage
                             eChangedNotebookPage
                             eCloseNotebookPage eLastClose bPages
 

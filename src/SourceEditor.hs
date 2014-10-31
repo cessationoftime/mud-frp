@@ -68,7 +68,7 @@ sourceEditorSaveFile = styledTextCtrlSaveFile
 -- the path into the sourceEditor
 sourceEditorSaveFileDialog :: Window a -> SourceEditorCtrl -> IO Bool
 sourceEditorSaveFileDialog window sourceEditorCtrl = do
-  filePath <- fileSaveDialog window True True "Save File" [("Haskell file",["*.hs"])] "" ""
+  filePath <- fileSaveDialog window True True "S ave File" [("Haskell file",["*.hs"])] "" ""
   let mb = (sourceEditorLoadFile sourceEditorCtrl) <$> filePath
   fromMaybe (return False) mb
 

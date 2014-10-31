@@ -4,7 +4,7 @@ import Controls.Mud.MapEditor
 import RBWX.RBWX
 import Aui
 import Data.List (find)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe,maybeToList)
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
@@ -82,34 +82,42 @@ networkDescription = do
 
 
     NotebookEvents _ _ _ _ _ _ _ _
-      --eChangingNotebookPage
+      eChangingNotebookPage
       eChangedNotebookPage eCloseNotebookPage eLastClosed bPages <-
       createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem
 
     liftIO $ auiManagerUpdate aui
 
 
-    let bActiveNBPage = stepper Nothing eChangedNotebookPage
-    let eSaveNBPage :: Event t (Maybe NotebookPage) =  bActiveNBPage <@ eSaveMenuItem
+    let bActiveNBPage = stepper Nothing eChangingNotebookPage
+    let eSaveNBPage :: Event t (Maybe (Int,Int)) =  bActiveNBPage <@ eSaveMenuItem
 
         doSave :: Maybe NotebookPage -> IO()
         doSave (Just (SourceNotebookPage _ ctrl fp)) = styledTextCtrlSaveFile ctrl fp >> return ()
         doSave Nothing = return ()
 
-    reactimate $ doSave <$> eSaveNBPage
+  --  reactimate $ doSave <$> eSaveNBPage
 
-    let showNBMaybe ::  Maybe NotebookPage => FilePath
-        showNBMaybe (Just (SourceNotebookPage _ _ fp) ) = fp
+    let showNBMaybe ::  Maybe (Int,Int) => FilePath
+        showNBMaybe (Just (x, y) ) = show x ++ " " ++ show y
         showNBMaybe _ = ""
 
+        changeList :: [(Int,Int)] => [(Int,Int)] => [(Int,Int)]
+        changeList y [] = y
+       -- changeList y x | length x > 2 = y
+        changeList y x = x ++ y
+{-
     sink status [text :== showNBMaybe <$> bActiveNBPage  ]
 
-   --     bTotal :: Behavior t Int
-    --    bTotal = accumB 0 $ (+1) <$ eChangingNotebookPage
+        bTotal :: Behavior t Int
+        bTotal = accumB 0 $ (+1) <$ eChangingNotebookPage
 
-   -- sink status [text :== show <$> bTotal ]
+    sink status [text :== show <$> bTotal ]
+-}
+        bTotal :: Behavior t [(Int,Int)]
+        bTotal = accumB [] $ changeList <$> (maybeToList <$> eChangingNotebookPage)
 
-
+    sink status [text :== show <$> bTotal ]
 
 
     return ()

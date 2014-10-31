@@ -4,22 +4,42 @@
 #arguments for the nix expression, syntax is { argname ? defaultvalue, argname ? defaultvalue }
 let
   pkgs = import <nixpkgs> {};
-  unityGtkModule = pkgs.callPackage ./unityGtkModule/saucybin.nix {};
-in
-{ makeWrapper ? pkgs.makeWrapper, haskellPackages ? pkgs.haskellPackages, 
-  gtk_modules ? [ pkgs.libcanberra unityGtkModule ] }: (
-        let
-	  inherit (haskellPackages) cabal cabalInstall_1_18_0_3
-	    executablePath random filepath wx wxcore reactiveBanana reactiveBananaWx;
+  unityGtkModule = pkgs.callPackage ../unityGtkModule/saucybin.nix {};
+  makeWrapper = pkgs.makeWrapper;
+  haskellPackages = pkgs.haskellPackages.override {
+   extension = self: super: {
+      cabalInstall = super.cabalInstall_1_20_0_3;
 
+     wxdirect = import ./wxdirect {
+       inherit pkgs haskellPackages cabal cabalInstall;
+     };
 
+     wxc = import ./wxc {
+       inherit pkgs haskellPackages cabal cabalInstall wxGTK wxdirect;
+     };
 
-	in cabal.mkDerivation (self: {
+     wxcore = import ./wxcore {
+       inherit pkgs haskellPackages cabal cabalInstall wxc wxdirect wxGTK;
+     };
+
+     wx = import ./wx {
+       inherit pkgs haskellPackages cabal cabalInstall wxcore;
+    };
+
+   };
+};
+
+  inherit (haskellPackages) cabal cabalInstall
+	      executablePath random split filepath reactiveBanana wxdirect wxc wxcore wx reactiveBananaWx;
+  gtk_modules = [ pkgs.libcanberra unityGtkModule ];
+  wxGTK = pkgs.wxGTK30;
+
+in cabal.mkDerivation (self: {
 	  pname = "mud-frp";
 	  version = "0.1.0.0";
-	  src = ./.;
-	  buildDepends = [ cabalInstall_1_18_0_3 executablePath random filepath wx wxcore reactiveBanana reactiveBananaWx makeWrapper];
-	  buildTools = [ cabalInstall_1_18_0_3 ];
+	  src = ../.;
+	  buildDepends = [ cabalInstall executablePath random split filepath reactiveBanana wxcore wx reactiveBananaWx makeWrapper];
+	  buildTools = [ cabalInstall ];
 	  enableSplitObjs = false;
 
 	  isLibrary = false;
@@ -44,7 +64,8 @@ in
         wrapProgram $out/bin/mudFrp --suffix-each GTK_PATH ':' "$gtk_modules"; 
       '';
 	})
-)
+	
+
 
 
 #http://stackoverflow.com/questions/21007052/gtk-warning-unable-to-locate-theme-engine-in-module-path-murrine-error-whi

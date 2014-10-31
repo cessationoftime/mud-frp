@@ -42,5 +42,5 @@ eCloseNotebookPage notebook =  event1 notebook notebookOnPageCloseEvent
 eChangedNotebookPage ::  Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
 eChangedNotebookPage notebook =  event1 notebook notebookOnPageChangedEvent
 
-eChangingNotebookPage ::  Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
+eChangingNotebookPage ::  Frameworks t => Core.AuiNotebook a -> Moment t (Event t (Int,Int))
 eChangingNotebookPage notebook =  event1 notebook notebookOnPageChangingEvent
