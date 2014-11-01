@@ -4,8 +4,10 @@
 #arguments for the nix expression, syntax is { argname ? defaultvalue, argname ? defaultvalue }
 let
   pkgs = import <nixpkgs> {};
-  unityGtkModule = pkgs.callPackage ../unityGtkModule/saucybin.nix {};
   makeWrapper = pkgs.makeWrapper;
+
+  unityGtkModule = import ../unityGtkModule/saucybin.nix { inherit pkgs; };
+
   haskellPackages = pkgs.haskellPackages.override {
    extension = self: super: {
       cabalInstall = super.cabalInstall_1_20_0_3;
@@ -31,7 +33,13 @@ let
 
   inherit (haskellPackages) cabal cabalInstall
 	      executablePath random split filepath reactiveBanana wxdirect wxc wxcore wx reactiveBananaWx;
+
+#  inherit (pkgs.gtkLibs) gtkmm;
+   inherit (pkgs) gtk gnome xlibs mesa;
+
+# we are not using gtk3. libcanberra_gtk3 fails to load.
   gtk_modules = [ pkgs.libcanberra unityGtkModule ];
+  UBUNTU_MENUPROXY=1;
   wxGTK = pkgs.wxGTK30;
 
 in cabal.mkDerivation (self: {
@@ -39,6 +47,7 @@ in cabal.mkDerivation (self: {
 	  version = "0.1.0.0";
 	  src = ../.;
 	  buildDepends = [ cabalInstall executablePath random split filepath reactiveBanana wxcore wx reactiveBananaWx makeWrapper];
+	  extraLibraries = [ xlibs.libX11 wxGTK gtk mesa ];
 	  buildTools = [ cabalInstall ];
 	  enableSplitObjs = false;
 
@@ -61,7 +70,7 @@ in cabal.mkDerivation (self: {
 #--prefix PATH : /usr/lib/lightdm/lightdm:${cabalInstall_1_18_0_3}/bin:/usr/bin/X11
 
       postInstall = ''
-        wrapProgram $out/bin/mudFrp --suffix-each GTK_PATH ':' "$gtk_modules"; 
+        wrapProgram $out/bin/mudFrp --set UBUNTU_MENUPROXY 1 --suffix-each GTK_PATH ':' "$gtk_modules"; 
       '';
 	})
 	

@@ -1,8 +1,10 @@
 # nix build, attempted on Ubuntu 13.10
+{ pkgs}:
+
 let
-  pkgs = import <nixpkgs> {};
+  inherit (pkgs) dpkg fetchurl stdenv makeWrapper;
 in
-{ dpkg ? pkgs.dpkg, fetchurl ? pkgs.fetchurl, stdenv ? pkgs.stdenv, makeWrapper ? pkgs.makeWrapper }: (
+
         
 
 #http://packages.ubuntu.com/saucy/unity-gtk3-module
@@ -31,7 +33,7 @@ in
 	installPhase = ''
 	  mkdir -p $out
 	  dpkg-deb -x $src $out
-	''; # */
+	'';
 
 	  meta = {
 	    description = "The unity gtk module";
@@ -48,5 +50,3 @@ in
 	  };
   
 }
-
-)

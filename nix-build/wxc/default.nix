@@ -4,6 +4,8 @@ let
 
 inherit (pkgs) gtk gnome mesa xlibs;
 
+inherit (pkgs.gtkLibs) gtkmm;
+
 #inherit (gnome) GConf;
 
 in cabal.mkDerivation (self: {
