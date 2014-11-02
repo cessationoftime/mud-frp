@@ -89,22 +89,18 @@ networkDescription = do
     liftIO $ auiManagerUpdate aui
 
 
-    let bActiveNBPage = stepper Nothing eChangingNotebookPage
+    let bActiveNBPage = stepper Nothing eChangedNotebookPage
     let eSaveNBPage :: Event t (Maybe NotebookPage) =  bActiveNBPage <@ eSaveMenuItem
 
         doSave :: Maybe NotebookPage -> IO()
         doSave (Just (SourceNotebookPage _ ctrl fp)) = styledTextCtrlSaveFile ctrl fp >> return ()
         doSave Nothing = return ()
 
-  --  reactimate $ doSave <$> eSaveNBPage
+    reactimate $ doSave <$> eSaveNBPage
 
     let showNBMaybe :: Maybe NotebookPage -> FilePath
         showNBMaybe (Just (SourceNotebookPage _ _ fp) ) = fp
         showNBMaybe _ = ""
-
-        changeList :: [(Int,Int)] -> [(Int,Int)] -> [(Int,Int)]
-        changeList y [] = y
-        changeList y x = x ++ y
 
     sink status [text :== showNBMaybe <$> bActiveNBPage  ]
 
@@ -112,12 +108,6 @@ networkDescription = do
   --      bTotal = accumB 0 $ (+1) <$ eClosedNotebookPage
 
   --  sink status [text :== show <$> bTotal ]
-{-
-        bTotal :: Behavior t [(Int,Int)]
-        bTotal = accumB [] $ changeList <$> (maybeToList <$> eChangingNotebookPage)
-
-    sink status [text :== show <$> bTotal ]
--}
 
     return ()
     -- diffButton event
