@@ -3,6 +3,7 @@ module RBWX.Banana.WX.Additions
 where
 
 import Graphics.UI.WX (Event)
+import qualified Graphics.UI.WXCore as Core (Event)
 --import Graphics.UI.WXCore hiding (Event)
 import RBWX.Banana.WX.Core.Core hiding (Event)
 import Data.Maybe
@@ -19,6 +20,10 @@ keyOnDownEvent = newEvent "keyOnDown" windowGetOnKeyDown1 windowOnKeyDown
 windowGetOnKeyDown1 :: Window a -> IO (EventKey -> IO ())
 windowGetOnKeyDown1 window
   = unsafeWindowGetHandlerState window wxEVT_KEY_DOWN (\eventKey -> return ())
+
+windowOnDestroy :: Window a -> (Core.Event () -> IO ()) -> IO ()
+windowOnDestroy window eventHandler
+  = windowOnEvent window [wxEVT_DESTROY] (const eventHandler) (\ev -> eventHandler ev)
 
 -- AUI Notebook PageClose
 notebookOnPageCloseEvent :: Event (AuiNotebook a) (Maybe EventAuiNotebook -> IO ())
@@ -45,7 +50,16 @@ data EventAuiNotebook = EventAuiNotebook {
 noWindowSelection :: WindowSelection
 noWindowSelection = WindowSelection Nothing Nothing
 
+-- | given an event and a window or frame. determine if the eventObject of the event is the given window
+eventObjectIsWindow :: Object a -> Object b -> IO Bool
+eventObjectIsWindow ev win = do eventObj <- eventGetEventObject (objectCast ev)
+                                return (objectCast eventObj == win)
 
+eventOfClass  :: Object a ->  IO String
+eventOfClass event =  let ev =  objectCast event
+                in do evObject <-   eventGetEventObject ev
+                      cInfo <- objectGetClassInfo evObject
+                      classInfoGetClassNameEx cInfo
 
 --- Utility -------------------------------------
 
@@ -56,10 +70,7 @@ auiOn :: String -> EventId ->  AuiNotebook a -> (Maybe EventAuiNotebook -> IO ()
 auiOn s eventId notebook eventHandler
   = windowOnEvent notebook [eventId] eventHandler closeHandler
        where closeHandler event = do
-               let ev =  objectCast event
-               evObject <-   eventGetEventObject ev
-               cInfo <- objectGetClassInfo evObject
-               cName <- classInfoGetClassNameEx cInfo
+               cName <-  eventOfClass event
                evAuiNoteMaybe :: Maybe EventAuiNotebook <-
                    case cName of
                       "wxAuiNotebook" ->

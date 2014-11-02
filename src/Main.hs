@@ -40,6 +40,12 @@ networkDescription = do
 
     aui <- liftIO  $ auiManagerCreate frame1 wxAUI_MGR_DEFAULT
 
+    -- If the frame itself is destroyed, then unInit the auiManager. Ignore other window destroy events
+    liftIO $ windowOnDestroy frame1 $ (\ev ->
+      do b <- eventObjectIsWindow ev frame1
+         if b then auiManagerUnInit aui else return ())
+
+
     status <- statusField [text := "Loading MUD Editor"]
     set frame1 [statusBar := [status]]
     diffGo <- button frame1 [text := "Go"]
@@ -58,6 +64,11 @@ networkDescription = do
 
     menuLine fileMenu
     quit  <- menuQuit fileMenu [help := "Quit the ide"]
+
+
+-- wxEVT_END_SESSION :: EventId
+
+-- CloseEvent
 
     -- Menu events
        -- NOTE: DO NOT USE "command" event for menuItems. It WILL cause duplicate event firings on menus attached to the menubar, but not sub-menus or context menus.
@@ -79,6 +90,13 @@ networkDescription = do
     set quit  [on command := close frame1]
     set frame1 [menuBar := [fileMenu]]
     -- Events
+
+
+    --when the app shuts down, unInit the auiManager for clean shutdown
+   -- appEndSession <- (eAppEndSession frame1)
+    --reactimate $ (do
+       --              putStrLn "unInitComplete"
+      --               auiManagerUnInit aui                    ) <$ appEndSession
 
 
     NotebookEvents _ _ _ _ _ _ _ _

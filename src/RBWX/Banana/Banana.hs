@@ -29,7 +29,7 @@ module RBWX.Banana.WX.Additions,
 import Reactive.Banana
 import Reactive.Banana.WX
 import RBWX.Banana.WX.Additions
-import RBWX.Banana.WX.Core.Core as Core hiding (identity, Identity, empty, newEvent)
+import RBWX.Banana.WX.Core.Core as Core hiding (identity, Identity, empty, newEvent, windowOnDestroy)
 
 --import Graphics.UI.WX.Events as WX (Event)
 
