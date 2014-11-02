@@ -90,7 +90,7 @@ networkDescription = do
 
 
     let bActiveNBPage = stepper Nothing eChangingNotebookPage
-    let eSaveNBPage :: Event t (Maybe (Int,Int)) =  bActiveNBPage <@ eSaveMenuItem
+    let eSaveNBPage :: Event t (Maybe NotebookPage) =  bActiveNBPage <@ eSaveMenuItem
 
         doSave :: Maybe NotebookPage -> IO()
         doSave (Just (SourceNotebookPage _ ctrl fp)) = styledTextCtrlSaveFile ctrl fp >> return ()
@@ -98,26 +98,26 @@ networkDescription = do
 
   --  reactimate $ doSave <$> eSaveNBPage
 
-    let showNBMaybe ::  Maybe (Int,Int) -> FilePath
-        showNBMaybe (Just (x, y)) = show x ++ " " ++ show y
+    let showNBMaybe :: Maybe NotebookPage -> FilePath
+        showNBMaybe (Just (SourceNotebookPage _ _ fp) ) = fp
         showNBMaybe _ = ""
 
         changeList :: [(Int,Int)] -> [(Int,Int)] -> [(Int,Int)]
         changeList y [] = y
         changeList y x = x ++ y
-{-
-    sink status [text :== showNBMaybe <$> bActiveNBPage  ]
+
+  --  sink status [text :== showNBMaybe <$> bActiveNBPage  ]
 
         bTotal :: Behavior t Int
         bTotal = accumB 0 $ (+1) <$ eChangingNotebookPage
 
     sink status [text :== show <$> bTotal ]
--}
+{-
         bTotal :: Behavior t [(Int,Int)]
         bTotal = accumB [] $ changeList <$> (maybeToList <$> eChangingNotebookPage)
 
     sink status [text :== show <$> bTotal ]
-
+-}
 
     return ()
     -- diffButton event

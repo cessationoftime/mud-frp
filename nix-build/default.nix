@@ -4,7 +4,13 @@
 #arguments for the nix expression, syntax is { argname ? defaultvalue, argname ? defaultvalue }
 let
   pkgs = import <nixpkgs> {};
-  makeWrapper = pkgs.makeWrapper;
+
+	   wxGTK = pkgs.stdenv.lib.overrideDerivation pkgs.wxGTK30 (oldAttrs: {
+	     name = "wxWidgets-3.0.2-snapshot";
+	     src = ../../wxWidgets-3.0.2;
+	  });
+  
+  inherit (pkgs) gtk gnome xlibs mesa makeWrapper wxGTK30;
 
   unityGtkModule = import ../unityGtkModule/saucybin.nix { inherit pkgs; };
 
@@ -35,12 +41,12 @@ let
 	      executablePath random split filepath reactiveBanana wxdirect wxc wxcore wx reactiveBananaWx;
 
 #  inherit (pkgs.gtkLibs) gtkmm;
-   inherit (pkgs) gtk gnome xlibs mesa;
+   
 
 # we are not using gtk3. libcanberra_gtk3 fails to load.
   gtk_modules = [ pkgs.libcanberra unityGtkModule ];
   UBUNTU_MENUPROXY=1;
-  wxGTK = pkgs.wxGTK30;
+  
 
 in cabal.mkDerivation (self: {
 	  pname = "mud-frp";

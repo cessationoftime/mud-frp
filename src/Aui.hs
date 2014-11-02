@@ -93,7 +93,7 @@ data NotebookEvents t = NotebookEvents {
   addedNoteBookPage :: Event t NotebookPage,
   -- | the currently selected NotebookPage is about to be changed or added (active tab), should conduct Nothing when the first page is about to be opened
   -- | NOTE: this function can crash the program,  probably a problem with the c bindings
-  changingNoteBookPage :: Event t (Maybe (Int,Int)),
+  changingNoteBookPage :: Event t (Maybe NotebookPage),
   -- | the currently selected NotebookPage has been changed or added (active tab), conducts Nothing when last page is about to close, should conduct nothing when the last page has closed
   -- | NOTE: this function is inconsistent, such that most events occur after the fact, except for when the last page closes, which occurs prior to closing.
   changedNoteBookPage :: Event t (Maybe NotebookPage),
@@ -115,14 +115,15 @@ createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
     eOpenFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eOpenFileDialogOk
     eOpenNotebookPage :: Event t NotebookPage <- (addSourcePage notebook) `ioReaction` eOpenFileDialogNotebookPage
     eCloseEventAuiNoteBook :: Event t EventAuiNotebook <- event1 notebook notebookOnPageCloseEvent
-    eChangingEventAuiNoteBook :: Event t (Int,Int) <- eChangingNotebookPage notebook
+    eChangingEventAuiNoteBook :: Event t EventAuiNotebook <- eChangingNotebookPage notebook
     eChangedEventAuiNoteBook :: Event t EventAuiNotebook <- eChangedNotebookPage notebook
     let eAddNotebookPage  :: Event t NotebookPage = eNewFileDialogNotebookPage `union` eOpenFileDialogNotebookPage
         eAddedNotebookPage  :: Event t NotebookPage = eNewNotebookPage `union` eOpenNotebookPage
         eChangedNotebookPage  :: Event t (Maybe NotebookPage) =
           let eChanged = fromWindowSelection2NotebookPage $ (\(EventAuiNotebook nbCurrent _ _) -> nbCurrent) `fmap` eChangedEventAuiNoteBook
           in (Nothing <$ eLastClose) `union` eChanged
-        eChangingNotebookPage :: Event t (Maybe (Int,Int)) = Just `fmap` eChangingEventAuiNoteBook
+        eChangingNotebookPage :: Event t (Maybe NotebookPage) =
+          fromWindowSelection2NotebookPage $ (\(EventAuiNotebook _ newSel _) -> newSel) `fmap` eChangingEventAuiNoteBook
         eCloseNotebookPage :: Event t (Maybe NotebookPage) =
           fromWindowSelection2NotebookPage $ (\(EventAuiNotebook _ newSel _) -> newSel) `fmap` eCloseEventAuiNoteBook
 
