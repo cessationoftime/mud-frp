@@ -21,7 +21,7 @@ windowGetOnKeyDown1 window
   = unsafeWindowGetHandlerState window wxEVT_KEY_DOWN (\eventKey -> return ())
 
 -- AUI Notebook PageClose
-notebookOnPageCloseEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+notebookOnPageCloseEvent :: Event (AuiNotebook a) (Maybe EventAuiNotebook -> IO ())
 notebookOnPageCloseEvent = newAuiEvent "auiNotebookOnPageClose" wxEVT_AUINOTEBOOK_PAGE_CLOSE
 
 -- AUINotebook PageClosed
@@ -29,14 +29,11 @@ notebookOnPageCloseEvent = newAuiEvent "auiNotebookOnPageClose" wxEVT_AUINOTEBOO
 --notebookOnPageClosedEvent = newAuiEvent "auiNotebookOnPageClosed" wxEVT_AUINOTEBOOK_PAGE_CLOSED
 
 -- AUINotebook PageChange
-notebookOnPageChangingEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+notebookOnPageChangingEvent :: Event (AuiNotebook a) (Maybe EventAuiNotebook -> IO ())
 notebookOnPageChangingEvent = newAuiEvent "auiNotebookOnPageChanging" wxEVT_AUINOTEBOOK_PAGE_CHANGING
 
-
---split into two events. ChangedTo and ChangedFrom based on the eventObject
-
 -- AUINotebook PageChanged
-notebookOnPageChangedEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+notebookOnPageChangedEvent :: Event (AuiNotebook a) (Maybe EventAuiNotebook -> IO ())
 notebookOnPageChangedEvent = newAuiEvent "auiNotebookOnPageChanged" wxEVT_AUINOTEBOOK_PAGE_CHANGED
 
 data WindowSelection = WindowSelection (Maybe WindowId) (Maybe (Window ())) deriving (Show)
@@ -52,17 +49,26 @@ noWindowSelection = WindowSelection Nothing Nothing
 
 --- Utility -------------------------------------
 
-newAuiEvent :: String -> EventId -> Event (AuiNotebook a) (EventAuiNotebook -> IO ())
+newAuiEvent :: String -> EventId -> Event (AuiNotebook a) (Maybe EventAuiNotebook -> IO ())
 newAuiEvent s evId = newEvent s (auiGetOn evId) (auiOn s evId)
 
-auiOn :: String -> EventId ->  AuiNotebook a -> (EventAuiNotebook -> IO ()) -> IO ()
+auiOn :: String -> EventId ->  AuiNotebook a -> (Maybe EventAuiNotebook -> IO ()) -> IO ()
 auiOn s eventId notebook eventHandler
   = windowOnEvent notebook [eventId] eventHandler closeHandler
        where closeHandler event = do
-               window <- fromAuiNotebookEvent notebook s (objectCast event)
-               eventHandler window
+               let ev =  objectCast event
+               evObject <-   eventGetEventObject ev
+               cInfo <- objectGetClassInfo evObject
+               cName <- classInfoGetClassNameEx cInfo
+               evAuiNoteMaybe :: Maybe EventAuiNotebook <-
+                   case cName of
+                      "wxAuiNotebook" ->
+                         Just `fmap` fromAuiNotebookEvent notebook s (objectCast event)
+                      "wxAuiTabCtrl" -> return Nothing -- I match on this only because I may want to do something with this case someday.  This case exists at least for the aui page changing event.
+                      _ -> return Nothing
+               eventHandler evAuiNoteMaybe
 
-auiGetOn :: EventId -> AuiNotebook a -> IO (EventAuiNotebook -> IO ())
+auiGetOn :: EventId -> AuiNotebook a -> IO (Maybe EventAuiNotebook -> IO ())
 auiGetOn eventId notebook
   = unsafeWindowGetHandlerState notebook eventId (const skipCurrentEvent)
 
@@ -70,7 +76,7 @@ auiGetOn eventId notebook
 fromAuiNotebookEvent :: AuiNotebook a -> String -> AuiNotebookEvent a -> IO EventAuiNotebook
 fromAuiNotebookEvent notebook s event = do
   --NOTE: eventGetEventObject does not always return an auiNotebook on the page changing event
-
+ -- evObject <- eventGetEventObject event
   evType <- eventGetEventType event
   selection <- bookCtrlEventGetSelection event
   oldSelection <- bookCtrlEventGetOldSelection event

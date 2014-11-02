@@ -114,7 +114,7 @@ createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
     eOpenFileDialogOk :: Event t FilePath <- openFileDialogOkEvent frame1 eOpenMenuItem
     eOpenFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eOpenFileDialogOk
     eOpenNotebookPage :: Event t NotebookPage <- (addSourcePage notebook) `ioReaction` eOpenFileDialogNotebookPage
-    eCloseEventAuiNoteBook :: Event t EventAuiNotebook <- event1 notebook notebookOnPageCloseEvent
+    eCloseEventAuiNoteBook :: Event t EventAuiNotebook <- eCloseNotebookPage notebook
     eChangingEventAuiNoteBook :: Event t EventAuiNotebook <- eChangingNotebookPage notebook
     eChangedEventAuiNoteBook :: Event t EventAuiNotebook <- eChangedNotebookPage notebook
     let eAddNotebookPage  :: Event t NotebookPage = eNewFileDialogNotebookPage `union` eOpenFileDialogNotebookPage

@@ -34,13 +34,13 @@ import RBWX.Banana.WX.Core.Core as Core hiding (identity, Identity, empty, newEv
 --import Graphics.UI.WX.Events as WX (Event)
 
 eCloseNotebookPage :: Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
-eCloseNotebookPage notebook =  event1 notebook notebookOnPageCloseEvent
+eCloseNotebookPage notebook =  filterJust <$> event1 notebook notebookOnPageCloseEvent
 
 --eClosedNotebookPage ::  Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
---eClosedNotebookPage notebook =  event1 notebook notebookOnPageClosedEvent
+--eClosedNotebookPage notebook =  filterJust <$> event1 notebook notebookOnPageClosedEvent
 
 eChangedNotebookPage ::  Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
-eChangedNotebookPage notebook =  event1 notebook notebookOnPageChangedEvent
+eChangedNotebookPage notebook =  filterJust <$> event1 notebook notebookOnPageChangedEvent
 
 eChangingNotebookPage ::  Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
-eChangingNotebookPage notebook =  event1 notebook notebookOnPageChangingEvent
+eChangingNotebookPage notebook =  filterJust <$> event1 notebook notebookOnPageChangingEvent
