@@ -25,8 +25,8 @@ notebookOnPageCloseEvent :: Event (AuiNotebook a) (Maybe EventAuiNotebook -> IO 
 notebookOnPageCloseEvent = newAuiEvent "auiNotebookOnPageClose" wxEVT_AUINOTEBOOK_PAGE_CLOSE
 
 -- AUINotebook PageClosed
---notebookOnPageClosedEvent :: Event (AuiNotebook a) (EventAuiNotebook -> IO ())
---notebookOnPageClosedEvent = newAuiEvent "auiNotebookOnPageClosed" wxEVT_AUINOTEBOOK_PAGE_CLOSED
+notebookOnPageClosedEvent :: Event (AuiNotebook a) (Maybe EventAuiNotebook -> IO ())
+notebookOnPageClosedEvent = newAuiEvent "auiNotebookOnPageClosed" wxEVT_AUINOTEBOOK_PAGE_CLOSED
 
 -- AUINotebook PageChange
 notebookOnPageChangingEvent :: Event (AuiNotebook a) (Maybe EventAuiNotebook -> IO ())

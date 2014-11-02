@@ -83,7 +83,7 @@ networkDescription = do
 
     NotebookEvents _ _ _ _ _ _ _ _
       eChangingNotebookPage
-      eChangedNotebookPage eCloseNotebookPage eLastClosed bPages <-
+      eChangedNotebookPage eCloseNotebookPage eClosedNotebookPage eLastClose eLastClosed bPages <-
       createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem
 
     liftIO $ auiManagerUpdate aui
@@ -106,12 +106,12 @@ networkDescription = do
         changeList y [] = y
         changeList y x = x ++ y
 
-  --  sink status [text :== showNBMaybe <$> bActiveNBPage  ]
+    sink status [text :== showNBMaybe <$> bActiveNBPage  ]
 
-        bTotal :: Behavior t Int
-        bTotal = accumB 0 $ (+1) <$ eChangingNotebookPage
+  --      bTotal :: Behavior t Int
+  --      bTotal = accumB 0 $ (+1) <$ eClosedNotebookPage
 
-    sink status [text :== show <$> bTotal ]
+  --  sink status [text :== show <$> bTotal ]
 {-
         bTotal :: Behavior t [(Int,Int)]
         bTotal = accumB [] $ changeList <$> (maybeToList <$> eChangingNotebookPage)
