@@ -41,9 +41,9 @@ networkDescription = do
     aui <- liftIO  $ auiManagerCreate frame1 wxAUI_MGR_DEFAULT
 
     -- If the frame itself is destroyed, then unInit the auiManager. Ignore other window destroy events
-    liftIO $ windowOnDestroy frame1 $ (\ev ->
+    liftIO $ windowOnDestroy frame1 $ (withCurrentEvent (\ev ->
       do b <- eventObjectIsWindow ev frame1
-         if b then auiManagerUnInit aui else return ())
+         if b then auiManagerUnInit aui else return ()) )
 
 
     status <- statusField [text := "Loading MUD Editor"]
@@ -101,13 +101,14 @@ networkDescription = do
 
     NotebookEvents _ _ _ _ _ _ _ _
       eChangingNotebookPage
-      eChangedNotebookPage eCloseNotebookPage eClosedNotebookPage eLastClose eLastClosed bPages <-
-      createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem
+      eChangedNotebookPage -- eCloseNotebookPage eClosedNotebookPage eLastClose eLastClosed
+      bPages <-
+         createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem
 
     liftIO $ auiManagerUpdate aui
 
 
-    let bActiveNBPage = stepper Nothing eChangedNotebookPage
+    let bActiveNBPage = stepper Nothing (newPage `fmap` eChangedNotebookPage)
     let eSaveNBPage :: Event t (Maybe NotebookPage) =  bActiveNBPage <@ eSaveMenuItem
 
         doSave :: Maybe NotebookPage -> IO()

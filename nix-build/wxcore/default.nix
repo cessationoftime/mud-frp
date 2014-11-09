@@ -8,7 +8,7 @@ inherit (haskellPackages) filepath parsec stm time;
 
 in cabal.mkDerivation (self: {
     pname = "wxcore";
-    version = "0.90.2.0";
+    version = "0.91.0.0";
     src = ../../../wxHaskell/wxcore;
     buildDepends = [ filepath parsec stm time wxc wxdirect ];
     extraLibraries = [ xlibs.libX11 mesa wxGTK ];

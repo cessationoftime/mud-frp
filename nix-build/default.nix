@@ -33,6 +33,10 @@ let
      wx = import ./wx {
        inherit pkgs haskellPackages cabal cabalInstall wxcore;
     };
+  
+     reactiveBananaWx = import ./reactiveBananaWx {
+       inherit pkgs haskellPackages cabal cabalInstall wxcore wx;
+    };
 
    };
 };

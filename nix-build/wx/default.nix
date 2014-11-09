@@ -6,7 +6,7 @@ inherit (haskellPackages) stm;
 
 in cabal.mkDerivation (self: {
     pname = "wx";
-    version = "0.90.2.0";
+    version = "0.91.0.0";
     src = ../../../wxHaskell/wx;
     buildDepends = [ stm wxcore ];
     buildTools = [ cabalInstall ];

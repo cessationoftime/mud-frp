@@ -106,8 +106,6 @@ liftIO3 :: Frameworks t => (a -> b -> c -> IO d) -> a -> b -> c -> Moment t d
 liftIO3 funct aa bb = liftIO . funct aa bb
 
 
-newtype WindowId = WindowId Int deriving (Eq,Show)
-
 windowGetId :: forall a. Window a -> IO WindowId
 windowGetId w =  do id <- WXCore.windowGetId w
                     return $ WindowId id
