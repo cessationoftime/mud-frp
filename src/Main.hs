@@ -5,6 +5,15 @@ import RBWX.RBWX
 import Aui
 import Data.List (find)
 import Data.Maybe (fromMaybe,maybeToList)
+import Controls.WorkspaceBrowser
+import EventInputs
+import AuiManager
+
+-- TODO: Haskelletor
+
+-- TODO: create open workspace (*.n6)
+-- TODO: and add existing project (*.n6proj,*.nix, *.cabal) menu item, to the workspace context menu
+
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
@@ -22,14 +31,8 @@ mainNetwork = do
 
  --   cmb <- comboBox frame1 [items := ["item1","item2"]]
 
-  --  set open  [on command :=  (sourceEditorOpenFileDialog frame1 (\fd r -> handlerDialogFinish (fd,r)) sourceEditorCtrl)]
-
-   -- set save  [on command :=  (sourceEditorFileSave sourceEditorCtrl  >> return ())]
-
-
     network <- compile networkDescription
     actuate network
-
 
  -- event network
 networkDescription :: forall t. Frameworks t => Moment t ()
@@ -38,17 +41,9 @@ networkDescription = do
     frame1 <- frame [ text  := "Editor for the Functional Interactive Fiction Engine (E-FIFE)"
       , resizeable := True]
 
-    aui <- liftIO  $ auiManagerCreate frame1 wxAUI_MGR_DEFAULT
-
-    -- If the frame itself is destroyed, then unInit the auiManager. Ignore other window destroy events
-    liftIO $ windowOnDestroy frame1 $ (withCurrentEvent (\ev ->
-      do b <- eventObjectIsWindow ev frame1
-         if b then auiManagerUnInit aui else return ()) )
-
-
     status <- statusField [text := "Loading MUD Editor"]
-    set frame1 [statusBar := [status]]
-    diffGo <- button frame1 [text := "Go"]
+    setM frame1 [statusBar := [status]]
+
     -- Menu layout
     fileMenu  <- menuPane      [ text := "File" ]
     newMenuItem   <- menuItem fileMenu [ text := "&New\tCtrl+N", help := "New file" ]
@@ -56,7 +51,9 @@ networkDescription = do
                            , help      := "Open file"
                --            , checkable := True
                            ]
+
     saveMenuItem   <- menuItem fileMenu [ text := "&Save\tCtrl+S", help := "Save file" ]
+    saveAllMenuItem   <- menuItem fileMenu [ text := "SaveAll", help := "Save All Files" ]
 
     doMenu  <- menuPane      [ text := "Do" ]
     doItMenuItem   <- menuItem doMenu [ text := "Do It", help := "DoIt" ]
@@ -65,47 +62,84 @@ networkDescription = do
     menuLine fileMenu
     quit  <- menuQuit fileMenu [help := "Quit the ide"]
 
+    -- [[[[ AuiManager setup
+  --  (auiEvent1 :: Event t [(Window (), Int, String)] ,addPanehandler) <- newEvent
 
--- wxEVT_END_SESSION :: EventId
 
--- CloseEvent
 
-    -- Menu events
+    aui <- createAuiManager frame1
+   -- auiManagerOutputs <- outputs aui []
+    let addPane w b c =  withUnderlying aui (\a -> auiManagerAddPane a w b c >> return ())
+  --  let addPane b c w =  auiManagerAddPane aui w b c >> return ()
+
+
+    ---- AuiManager setup ]
+-------------------------------------------http://www.reddit.com/----------------------
+
+
        -- NOTE: DO NOT USE "command" event for menuItems. It WILL cause duplicate event firings on menus attached to the menubar, but not sub-menus or context menus.
     eSaveMenuItem :: Event t ()  <- event0 frame1 $ menu saveMenuItem
+    eSaveAllMenuItem :: Event t ()  <- event0 frame1 $ menu saveAllMenuItem
     eOpenMenuItem :: Event t ()  <- event0 frame1 $ menu openMenuItem
     eNewMenuItem :: Event t ()  <- event0 frame1 $ menu newMenuItem
     eDoItMenuButton :: Event t ()  <- event0 frame1 $ menu doItMenuItem
 
-    --Context Menu
+    --  [[[[ MapEditor
     (mapEditor,eAutoContextItem) <- mapEditorIO frame1
+    _ <- liftIO $ addPane (objectCast mapEditor) wxTOP  "Map Pane"
+    --  MapEditor ]]]]
 
-    -- Notebook layout
+    -- [[[[ Notebook
 
-    notebook <- liftIO $ newNotebook frame1
-    added1 <- liftIO $ auiManagerAddPane aui notebook wxCENTER "Source Pane"
-    added2 <- liftIO $ auiManagerAddPane aui mapEditor wxTOP "map Pane"
-    added3 <- liftIO $ auiManagerAddPane aui diffGo wxRIGHT "Diff Button"
+    eNewDialogOk <- loadFileWithDialog New [Haskell] frame1 eNewMenuItem
+    eOpenDialogOk <- loadFileWithDialog Open [Haskell] frame1 eOpenMenuItem
+
+    let notebookInputs = NotebookInputs eNewDialogOk  eOpenDialogOk
+                             eSaveMenuItem eSaveAllMenuItem
+
+
+
+    NotebookOutputs _ _ _ _ _ _
+      eChangingNotebookPage
+      eChangedNotebookPage eCloseNotebookPage eClosedNotebookPage eLastClose eLastClosed
+      bPages <- createNotebook frame1 [notebookInputs] (\n -> addPane (objectCast n) wxCENTER "Source Pane")
+
+     --  Notebook ]]]]
+
+    -- [[[[ TreeCtrl
+
+    workspaceBrowserOutputs <- createWorkspaceBrowser frame1 [] (\(WorkspaceBrowser p) -> addPane (objectCast p) wxRIGHT "Workspace Browser")
+
+     -- TreeCtrl ]]]]
+
    -- set new   [on command := mainNetwork]
-    set quit  [on command := close frame1]
-    set frame1 [menuBar := [fileMenu]]
+    setM quit  [on command := close frame1]
+    setM frame1 [menuBar := [fileMenu]]
+
+
+
+    -- [[[[ AuiManager setup
+  --  (adder1,handler1) <- liftIO newAddHandler
+  --  auiEvent1 <- fromAddHandler adder1
+
+  --  (adder2,handler2) <- liftIO newAddHandler
+  --  auiEvent2 <- fromAddHandler adder2
+
+
+   -- let auiManagerStartupInput = AuiManagerInputs auiEvent1 auiEvent2
+
+
+  --  aui <- createAuiManager frame1
+
+
+
+    liftIO $ withUnderlying aui auiManagerUpdate
+
+    ---- AuiManager setup ]]]]
+
     -- Events
 
 
-    --when the app shuts down, unInit the auiManager for clean shutdown
-   -- appEndSession <- (eAppEndSession frame1)
-    --reactimate $ (do
-       --              putStrLn "unInitComplete"
-      --               auiManagerUnInit aui                    ) <$ appEndSession
-
-
-    NotebookEvents _ _ _ _ _ _ _ _
-      eChangingNotebookPage
-      eChangedNotebookPage -- eCloseNotebookPage eClosedNotebookPage eLastClose eLastClosed
-      bPages <-
-         createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem
-
-    liftIO $ auiManagerUpdate aui
 
 
     let bActiveNBPage = stepper Nothing (newPage `fmap` eChangedNotebookPage)

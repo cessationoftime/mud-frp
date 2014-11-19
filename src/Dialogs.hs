@@ -13,9 +13,8 @@
 --
 -----------------------------------------------------------------------------
 
-module Dialogs where
+module Dialogs (loadFileWithDialog, DialogDescriptor(..), DialogOpenMode(..)) where
 import RBWX.RBWX
---f
 
 
 fileOpenDialog1 :: Window a -> Bool -> Bool -> String -> [(String,[String])] -> FilePath -> FilePath -> ChainIO DialogResult
@@ -51,9 +50,37 @@ eventDialogOkFilePath :: Frameworks t => Event t DialogResult ->  Moment t (Even
 eventDialogOkFilePath eDialogFinish = fileDialogGetPath `mapIOreaction` (eventDialogOk eDialogFinish)
 
 -- | setup the eventNetwork to show an openFileDialog in the given Window when the given event is received. And load the file into the sourceControl
-openFileDialogOkEvent :: Frameworks t => Window a -> Event t b -> Moment t (Event t FilePath)
-openFileDialogOkEvent frame1 event = do
-  let openFileDialog = fileOpenDialog1 frame1 True True "Open File" [("Haskell file",["*.hs"])] "" ""
+fileDialogOkEvent :: Frameworks t => String ->  [DialogDescriptor] -> Window a -> Event t b -> Moment t (Event t FilePath)
+fileDialogOkEvent title fileDescs frame1 event = do
+  let openFileDialog = fileOpenDialog1 frame1 True True title (descriptor <$> fileDescs) "" ""
   eGetDialogFinish <- eventDialogResult openFileDialog event
   eGetDialogOkFilePath  <- eventDialogOkFilePath eGetDialogFinish
   return eGetDialogOkFilePath
+
+data DialogOpenMode = New | Open
+
+instance Show DialogOpenMode where
+  show New = "New File"
+  show Open = "Open File"
+
+data DialogDescriptor = Haskell | Workspace | Project | Nix | Cabal
+
+instance Show DialogDescriptor where
+  show Haskell = "Haskell Source"
+  show Workspace = "N6 Workspace"
+  show Project = "N6 Project"
+  show Nix = "Nix"
+  show Cabal = "Cabal"
+
+fileExtensions :: DialogDescriptor -> [String]
+fileExtensions Haskell = ["*.hs", "*.lhs"]
+fileExtensions Workspace = ["*.n6"]
+fileExtensions Project = ["*.n6proj"]
+fileExtensions Nix = ["*.nix"]
+fileExtensions Cabal = ["*.cabal"]
+
+descriptor :: DialogDescriptor -> (String,[String])
+descriptor fd = (show fd,fileExtensions fd)
+
+loadFileWithDialog fileMode = fileDialogOkEvent (show (fileMode :: DialogOpenMode))
+

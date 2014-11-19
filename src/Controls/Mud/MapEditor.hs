@@ -65,7 +65,7 @@ mapEditorIO :: forall t a. Frameworks t => Window a -> Moment t (Panel (), Event
 mapEditorIO window = do
     -- Layout
     t <- timer window [ interval   := 50 ]
-    mapEditorPanel <- panel window []
+    mapEditorPanel <- panelM window []
     contextMenu  <-  menuPane      [ text := "Context" ]
     autoMenuItem  <- menuItem contextMenu      [ text := "Auto" ]
     wireupContextMenu mapEditorPanel contextMenu

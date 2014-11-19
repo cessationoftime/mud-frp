@@ -13,7 +13,13 @@
 -----------------------------------------------------------------------------
 {-# LANGUAGE Rank2Types #-}
 
-module Aui where
+module Aui (
+ createNotebook
+,matchesNotebookPage
+,NotebookOutputs(NotebookOutputs)
+,NotebookPage(..)
+,AuiNotebookChange(..)
+) where
 import Dialogs
 import SourceEditor
 import Controls.Mud.MapEditor
@@ -21,10 +27,12 @@ import RBWX.RBWX
 import System.FilePath
 import Data.List (find,partition)
 import Data.Maybe (fromJust,listToMaybe,maybeToList)
+import EventInputs (NotebookInputs(..), unite)
 
 
 
-newNotebook :: Frame a -> IO (AuiNotebook ())
+
+newNotebook :: Window a -> IO (AuiNotebook ())
 newNotebook frame1 = do
 -- create the notebook off-window to avoid flicker
   (Size x y) <- windowGetClientSize frame1
@@ -74,19 +82,15 @@ instance IsNotebookPage WindowSelection where
   matchesNotebookPage (WindowSelection _ Nothing) (SourceNotebookPage id _ _) = False
 
 -- TODO: fix the inconsistency of change events
-data NotebookEvents t = NotebookEvents {
-  -- | on newFileDialog OK button press, conducts FilePath of selected file
-  new1DialogPath :: Event t FilePath,
+data NotebookOutputs t = NotebookOutputs {
   -- | on newFileDialog OK button press, conducts page to be added
-  new2DialogPage  :: Event t NotebookPage,
+  newDialogPage  :: Event t NotebookPage,
   -- | on new page added to notebook, conducts the page added
-  new3Page :: Event t NotebookPage,
-  -- | on openFileDialog OK button press, conducts FilePath of selected file
-  open1FileDialogOk :: Event t FilePath,
+  newNoteBookPage :: Event t NotebookPage,
   -- | on openFileDialog OK button press, conducts the page to be added
-  open2FileDialogOkNotebookPage  :: Event t NotebookPage,
+  openFileDialogOkNotebookPage  :: Event t NotebookPage,
   -- | on newly opened page added to notebook, conducts the page added
-  open3NoteBookPage  :: Event t NotebookPage,
+  openNoteBookPage  :: Event t NotebookPage,
    -- | on about to add page to notebook, conducts the page to be added
   addNoteBookPage :: Event t NotebookPage,
   -- | on page added to notebook, conducts the page added
@@ -96,25 +100,37 @@ data NotebookEvents t = NotebookEvents {
   -- | the currently selected NotebookPage has been changed or added (active tab), conducts the page changing to, conducts Nothing when the last page has closed
   changedNoteBookPage :: Event t AuiNotebookChange,
   -- | notebook page is about to close, conducts the page about to close
-  --closeNoteBookPage :: Event t AuiNotebookChange,
+  closeNoteBookPage :: Event t AuiNotebookChange,
    -- | notebook page is about to close, conducts the page about to close
- -- closedNoteBookPage :: Event t (Maybe NotebookPage),
+  closedNoteBookPage :: Event t (Maybe NotebookPage),
   -- | last page in the notebook is about to close, conducts the page about to close
- -- lastCloseNoteBookPage :: Event t AuiNotebookChange,
+  lastCloseNoteBookPage :: Event t AuiNotebookChange,
   -- | last page in the notebook has been closed, conducts the closed page
- -- lastClosedNoteBookPage :: Event t (Maybe NotebookPage),
+  lastClosedNoteBookPage :: Event t (Maybe NotebookPage),
   -- | pages currently in the notebook, and the last closed page
   pages :: Behavior t ([NotebookPage],Maybe NotebookPage)
   }
 
+{-
+createControl :: Frameworks t => Window d -> [a] -> (Window c -> IO ())  -> Moment t (b)
+createControl frame1 inputs setupIO = let input = unite nbcs in do
+    c <- liftIO $ newNotebook frame1
+    liftIO $ setupIO c
+    createOutputs c frame1 input
+-}
+
+createNotebook :: Frameworks t => Frame () -> [NotebookInputs t] -> (AuiNotebook () -> IO ())  -> Moment t (NotebookOutputs t)
+createNotebook frame1 inputs setupIO = do
+    notebook <- liftIO $ newNotebook frame1
+    liftIO $ setupIO notebook
+    outputs notebook frame1 (unite inputs)
+
 --TODO: can we combine this with creation of the AuiNotebook itself?
-createNotebookEvents :: Frameworks t => AuiNotebook () -> Frame () -> Event t () -> Event t () -> Moment t (NotebookEvents t)
-createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
-    eNewFileDialogOk :: Event t FilePath <- openFileDialogOkEvent frame1 eNewMenuItem
-    eNewFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eNewFileDialogOk
+outputs :: Frameworks t => AuiNotebook () -> Frame () -> NotebookInputs t -> Moment t (NotebookOutputs t)
+outputs notebook frame1 (NotebookInputs eNew eOpen eSave eSaveAll) = do
+    eNewFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eNew
     eNewNotebookPage :: Event t NotebookPage <- (addEmptySourceTab notebook) `ioReaction`  eNewFileDialogNotebookPage
-    eOpenFileDialogOk :: Event t FilePath <- openFileDialogOkEvent frame1 eOpenMenuItem
-    eOpenFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eOpenFileDialogOk
+    eOpenFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eOpen
     eOpenNotebookPage :: Event t NotebookPage <- (addSourcePage notebook) `ioReaction` eOpenFileDialogNotebookPage
     eCloseEventAuiNoteBook :: Event t EventAuiNotebook <- eCloseNotebookPage notebook
     eClosedEventAuiNoteBook :: Event t EventAuiNotebook <- eClosedNotebookPage notebook
@@ -122,16 +138,16 @@ createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
     eChangedEventAuiNoteBook :: Event t EventAuiNotebook <- eChangedNotebookPage notebook
     let eAddNotebookPage  :: Event t NotebookPage = eNewFileDialogNotebookPage `union` eOpenFileDialogNotebookPage
         eAddedNotebookPage  :: Event t NotebookPage = eNewNotebookPage `union` eOpenNotebookPage
-        eChangedNotebookPage  :: Event t AuiNotebookChange =  fromWindowSelection2NotebookPage eChangedEventAuiNoteBook
-        --  let eChanged = fromWindowSelection2NotebookPage eChangedEventAuiNoteBook
-         -- in (emptyNotebookChange <$ eLastClosed) `union` eChanged
-        eChangingNotebookPage :: Event t AuiNotebookChange = fromWindowSelection2NotebookPage eChangingEventAuiNoteBook
-        --  let eChanging = fromWindowSelection2NotebookPage eChangingEventAuiNoteBook
-        --  in (emptyNotebookChange <$ eLastClose) `union` eChanging
-      --  eCloseNotebookPage :: Event t AuiNotebookChange =
-       --   fromWindowSelection2NotebookPage eCloseEventAuiNoteBook
-      --  eClosedNotebookPage :: Event t (Maybe NotebookPage) =
-       --   bClosedPage <@ eClosedEventAuiNoteBook
+        eChangedNotebookPage  :: Event t AuiNotebookChange =
+          let eChanged = fromWindowSelection2NotebookPage eChangedEventAuiNoteBook
+          in (emptyNotebookChange <$ eLastClosed) `union` eChanged
+        eChangingNotebookPage :: Event t AuiNotebookChange =
+          let eChanging = fromWindowSelection2NotebookPage eChangingEventAuiNoteBook
+          in (emptyNotebookChange <$ eLastClose) `union` eChanging
+        eCloseNotebookPage :: Event t AuiNotebookChange =
+          fromWindowSelection2NotebookPage eCloseEventAuiNoteBook
+        eClosedNotebookPage :: Event t (Maybe NotebookPage) =
+          bClosedPage <@ eClosedEventAuiNoteBook
 
         findPage :: WindowSelection -> [NotebookPage] -> Maybe NotebookPage
         findPage  winSelect notes = find (matchesNotebookPage winSelect) notes
@@ -160,27 +176,27 @@ createNotebookEvents notebook frame1 eNewMenuItem eOpenMenuItem = do
             add nb (nbs,mbClosed) = (nb:nbs,mbClosed)
             remove nbSelect (nbs,mbClosed)  = filterNotPage nbSelect nbs
 
-      --  bClosedPage :: Behavior t (Maybe NotebookPage)
-       -- bClosedPage = (\(_,closedPage) -> closedPage) `fmap` bPages
+        bClosedPage :: Behavior t (Maybe NotebookPage)
+        bClosedPage = (\(_,closedPage) -> closedPage) `fmap` bPages
 
         -- | check there is the x number of pages left in the notebook
         bPageLeft :: Int -> Behavior t Bool
         bPageLeft x = (\(nps,_) -> length nps == x) `fmap` bPages
 
         -- | event when last page is about to close
-      --  eLastClose :: Event t AuiNotebookChange
-      --  eLastClose = whenE (bPageLeft 1) eCloseNotebookPage
+        eLastClose :: Event t AuiNotebookChange
+        eLastClose = whenE (bPageLeft 1) eCloseNotebookPage
 
         -- | event when last page has closed
-      --  eLastClosed :: Event t (Maybe NotebookPage)
-      --  eLastClosed = whenE (bPageLeft 0) eClosedNotebookPage
+        eLastClosed :: Event t (Maybe NotebookPage)
+        eLastClosed = whenE (bPageLeft 0) eClosedNotebookPage
 
-    return $ NotebookEvents eNewFileDialogOk eNewFileDialogNotebookPage eNewNotebookPage
-                            eOpenFileDialogOk eOpenFileDialogNotebookPage eOpenNotebookPage
+    return $ NotebookOutputs eNewFileDialogNotebookPage eNewNotebookPage
+                            eOpenFileDialogNotebookPage eOpenNotebookPage
                             eAddedNotebookPage eAddedNotebookPage
                             eChangingNotebookPage
                             eChangedNotebookPage
-                            --eCloseNotebookPage eClosedNotebookPage
-                            --eLastClose eLastClosed
+                            eCloseNotebookPage eClosedNotebookPage
+                            eLastClose eLastClosed
                             bPages
 

@@ -11,11 +11,10 @@
 -- Code for the SourceEditor control
 --
 -----------------------------------------------------------------------------
-module SourceEditor (sourceEditor,sourceEditorLoadFile,openFileDialogOkEvent, SourceEditorCtrl) where
+module SourceEditor (sourceEditor,sourceEditorLoadFile,SourceEditorCtrl) where
 
 import Data.Maybe (fromMaybe)
 import Data.IORef
-import Dialogs
 import RBWX.RBWX
 
 
@@ -68,8 +67,8 @@ sourceEditorSaveFile = styledTextCtrlSaveFile
 -- the path into the sourceEditor
 sourceEditorSaveFileDialog :: Window a -> SourceEditorCtrl -> IO Bool
 sourceEditorSaveFileDialog window sourceEditorCtrl = do
-  filePath <- fileSaveDialog window True True "S ave File" [("Haskell file",["*.hs"])] "" ""
-  let mb = (sourceEditorLoadFile sourceEditorCtrl) <$> filePath
+  filePathMb <- fileSaveDialog window True True "Save File" [("Haskell file",["*.hs"])] "" ""
+  let mb = (sourceEditorLoadFile sourceEditorCtrl) <$> filePathMb
   fromMaybe (return False) mb
 
 

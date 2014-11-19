@@ -20,9 +20,9 @@ module RBWX.Banana.WX.Core.Lift
    RBWX.Banana.WX.Core.Lift.statusField,
    RBWX.Banana.WX.Core.Lift.frame,
    RBWX.Banana.WX.Core.Lift.menuLine,
-   RBWX.Banana.WX.Core.Lift.set,
-   RBWX.Banana.WX.Core.Lift.button,
-   RBWX.Banana.WX.Core.Lift.panel,
+   RBWX.Banana.WX.Core.Lift.setM,
+   RBWX.Banana.WX.Core.Lift.buttonM,
+   RBWX.Banana.WX.Core.Lift.panelM,
    RBWX.Banana.WX.Core.Lift.timer,
    RBWX.Banana.WX.Core.Lift.windowGetId,
    RBWX.Banana.WX.Core.Lift.auiNotebookGetCurrentPage,
@@ -34,7 +34,7 @@ module RBWX.Banana.WX.Core.Lift
   ) where
 --import WxAdditions
 import Graphics.UI.WX as WX_
- hiding (panel,button,Timer,set,menuLine,frame,statusField,menuSub,menuPane,menuItem,menuQuit, Event,
+ hiding (Timer,menuLine,frame,statusField,menuSub,menuPane,menuItem,menuQuit, Event,
          timer)
  -- (Prop((:=)), start, statusBar, layout, command, on, menuBar, menu, tabTraversal,
  --  mouse, interval, repaint, timer, bitmap, drawBitmap, paint,styledTextCtrl
@@ -73,8 +73,8 @@ menuQuit = liftIO2 WX.menuQuit
 menuPane :: Frameworks t => [Prop (Menu ())] -> Moment t (Menu ())
 menuPane = liftIO1 WX.menuPane
 
-panel :: Frameworks t => Window a -> [Prop (Panel ())] -> Moment t (Panel ())
-panel = liftIO2 WX.panel
+panelM :: Frameworks t => Window a -> [Prop (Panel ())] -> Moment t (Panel ())
+panelM = liftIO2 WX.panel
 
 statusField :: Frameworks t => [Prop (StatusField)] -> Moment t (StatusField)
 statusField = liftIO1 WX.statusField
@@ -88,11 +88,11 @@ timer = liftIO2 WX.timer
 menuLine :: Frameworks t => Menu () -> Moment t ()
 menuLine = liftIO1 WX.menuLine
 
-set :: Frameworks t => w -> [Prop w] -> Moment t ()
-set = liftIO2 WX.set
+setM :: Frameworks t => w -> [Prop w] -> Moment t ()
+setM = liftIO2 WX.set
 
-button :: Frameworks t => Window a -> [Prop (Button ())] -> Moment t (Button ())
-button = liftIO2 WX.button
+buttonM :: Frameworks t => Window a -> [Prop (Button ())] -> Moment t (Button ())
+buttonM = liftIO2 WX.button
 
 ---------------
 

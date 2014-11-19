@@ -27,6 +27,7 @@ import RBWX.Banana.WX.Core.ContextMenu
 import Reactive.Banana
 import Reactive.Banana.Frameworks
 
+-- | perform the IO on the given event, create a new event
 ioReaction :: Frameworks t =>
    (a -> IO ()) -> Event t a ->  Moment t (Event t a)
 ioReaction func ev = do
