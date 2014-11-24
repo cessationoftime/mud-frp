@@ -23,16 +23,6 @@ import RBWX.RBWX
 import EventInputs (AuiManagerInputs(..), unite, eiAddPane)
 import GHC.Exts
 
-class Fusion a where
-  type FusionInput t a
-  type FusionOutput t a
- -- fusionInput :: a -> FusionInput t a
-  --fusionOutput :: a -> FusionOutput t a
-
-
-
--- We need a way to setup both input and output prior to the events providing the input
--- can we make an output implement an input?
 
 data AuiManagerOutputs t = AuiManagerOutputs
 
