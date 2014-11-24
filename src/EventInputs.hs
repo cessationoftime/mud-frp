@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  EventController
@@ -12,48 +13,46 @@
 --
 -----------------------------------------------------------------------------
 
-module EventInputs (
-NotebookInputs(NotebookInputs)
-,unite
-,WorkspaceBrowserInputs(WorkspaceBrowserInputs)
-,AuiManagerInputs(..)
-) where
+module EventInputs where
 import RBWX.RBWX
 
-class Inputs a where
+
+data NotebookInput t = NotebookInput {
+  eiNewPage :: Event t FilePath
+ ,eiOpenPage :: Event t FilePath
+ ,eiSave :: Event t ()
+ ,eiSaveAll :: Event t ()
+}
+
+class UniteInputs a where
   unite :: [a] -> a
 
---------------
-{-
 class NotebookInputs a where
-  newPage :: Event t FilePath = never
-  openPage :: Event t FilePath = never
-  save :: Event t () = never
-  saveAll :: Event t () = never
--}
+  toNotebookInput :: a -> NotebookInput t
 
-data NotebookInputs t = NotebookInputs {
-     newPage :: Event t FilePath
-    ,openPage :: Event t FilePath
-    ,save :: Event t ()
-    ,saveAll :: Event t ()
-  }
+instance UniteInputs (NotebookInput t) where
+  unite inputs = NotebookInput (unions $ eiNewPage <$> inputs) (unions $ eiOpenPage <$> inputs) (unions $ eiSave <$> inputs) (unions $ eiSaveAll <$> inputs)
 
-instance Inputs (NotebookInputs t) where
-    unite inputs = NotebookInputs (uni newPage) (uni openPage) (uni save) (uni saveAll)
-      where  uni x =(unions $ x <$> inputs)
+class WorkspaceBrowserInputs a where
+   toWorkspaceBrowserInput :: a -> WorkspaceBrowserInput t
 
------------
+data WorkspaceBrowserInput t = WorkspaceBrowserInput {
+   eiCreateWorkspace :: Event t FilePath
+  ,eiOpenWorkspace :: Event t FilePath
+}
 
-data WorkspaceBrowserInputs t = WorkspaceBrowserInputs { createWS :: Event t FilePath, openWS :: Event t FilePath }
+instance UniteInputs (WorkspaceBrowserInput t) where
+  unite inputs = WorkspaceBrowserInput (uni eiCreateWorkspace) (uni eiOpenWorkspace)
+    where  uni x =(unions $ x <$> inputs)
 
-
-instance Inputs (WorkspaceBrowserInputs t) where
-    unite inputs = WorkspaceBrowserInputs (uni createWS) (uni openWS)
-      where  uni x =(unions $ x <$> inputs)
-
-
+data AuiManagerInput t = AuiManagerInput {
+  eiAddPane :: Event t [(Window (), Int, String)]
+}
 
 class AuiManagerInputs a where
-  addPane :: a -> Event t [(Window (), Int, String)]
-  addPane _ = never
+   toAuiManagerInput :: a -> AuiManagerInput t
+
+instance UniteInputs (AuiManagerInput t) where
+  unite inputs = AuiManagerInput (uni eiAddPane)
+    where  uni x =(unions $ x <$> inputs)
+

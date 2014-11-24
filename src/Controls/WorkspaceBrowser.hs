@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Controls.WorkspaceBrowser
@@ -30,21 +31,22 @@ newtype WorkspaceBrowser = WorkspaceBrowser (Panel ())
 
 data WorkspaceBrowserOutputs t = WorkspaceBrowserOutputs { }
 
-createWorkspaceBrowser :: Frameworks t => Frame () -> [WorkspaceBrowserInputs t] -> (WorkspaceBrowser -> IO ())  -> Moment t (WorkspaceBrowserOutputs t)
+createWorkspaceBrowser :: (Frameworks t) => Frame () -> [WorkspaceBrowserInput t] -> (WorkspaceBrowser -> IO ())  -> Moment t (WorkspaceBrowserOutputs t)
 createWorkspaceBrowser frame1 inputs setupIO = do
     (panel,tree,buttonCreateWS,buttonOpenWS) <- liftIO $ setup frame1
     eButtonCreateWS  <- event0 buttonCreateWS command
     eButtonOpenWS <- event0 buttonOpenWS command
     eCreateDialogOk <- loadFileWithDialog New [Workspace] frame1 eButtonCreateWS
     eOpenDialogOk <- loadFileWithDialog Open [Workspace] frame1 eButtonOpenWS
-    let wbInput = WorkspaceBrowserInputs eCreateDialogOk eOpenDialogOk
+    let wbInput = WorkspaceBrowserInput eCreateDialogOk eOpenDialogOk
+        li =  wbInput:inputs
     liftIO $ setupIO $ WorkspaceBrowser panel
-    outputs tree frame1 (unite $ wbInput:inputs)
+    outputs tree frame1 $ unite li
 
 
-outputs :: Frameworks t => TreeCtrl () -> Frame () -> WorkspaceBrowserInputs t -> Moment t (WorkspaceBrowserOutputs t)
-outputs treeCtrl frame1 (WorkspaceBrowserInputs eCreateWS eOpenWS)  = do
-  let e = eCreateWS `union` eOpenWS
+outputs :: (Frameworks t) => TreeCtrl () -> Frame () -> WorkspaceBrowserInput t -> Moment t (WorkspaceBrowserOutputs t)
+outputs treeCtrl frame1 (WorkspaceBrowserInput eCreateWS eOpenWS)  =
+  let e = eCreateWS `union` eOpenWS in do
   reactimate $ (loadWS treeCtrl) <$> e
   return (WorkspaceBrowserOutputs)
 

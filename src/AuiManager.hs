@@ -18,10 +18,9 @@ module AuiManager (
   ,withUnderlying
   ,withParent
   ,withWindow
-  ,outputs
 ) where
 import RBWX.RBWX
-import EventInputs (AuiManagerInputs(..), unite)
+import EventInputs (AuiManagerInputs(..), unite, eiAddPane)
 import GHC.Exts
 
 class Fusion a where
@@ -39,19 +38,11 @@ data AuiManagerOutputs t = AuiManagerOutputs
 
 data AuiManagerWidget = AuiManagerWidget (AuiManager ()) (Frame ())
 
+{-
 class HasEvents a where
   type Input a b :: Constraint
   type Output a t
   outputs :: (Frameworks t,Input a b) => a -> [b] -> Moment t (Output a t)
-
-class (HasEvents a) => WXWidget a where
-  type Underlying a
-  type WidgetParent a
-  withUnderlying :: a -> (Underlying a -> IO()) -> IO ()
-  withParent :: a -> (WidgetParent a -> IO()) -> IO ()
-
-class (WXWidget a) => WindowWidget a where
-  withWindow :: a -> (Window () -> IO()) -> IO ()
 
 instance HasEvents AuiManagerWidget where
   type Input AuiManagerWidget b = AuiManagerInputs b
@@ -59,6 +50,21 @@ instance HasEvents AuiManagerWidget where
   outputs (AuiManagerWidget aui frame1) inputs = let eAddPane = unions $ addPane `map` inputs in do
      reactimate $  (\panes -> (sequence_ [auiManagerAddPane aui p loc title | (p,loc,title) <- panes]) >> (auiManagerUpdate aui)) <$> eAddPane
      return AuiManagerOutputs
+-}
+
+class WXWidget a where
+  type Underlying a
+  type WidgetParent a
+  withUnderlying :: a -> (Underlying a -> IO()) -> IO ()
+  withParent :: a -> (WidgetParent a -> IO()) -> IO ()
+
+
+
+
+
+class (WXWidget a) => WindowWidget a where
+  withWindow :: a -> (Window () -> IO()) -> IO ()
+
 
 instance WXWidget AuiManagerWidget where
   type Underlying AuiManagerWidget = AuiManager ()

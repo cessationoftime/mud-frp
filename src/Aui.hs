@@ -27,7 +27,7 @@ import RBWX.RBWX
 import System.FilePath
 import Data.List (find,partition)
 import Data.Maybe (fromJust,listToMaybe,maybeToList)
-import EventInputs (NotebookInputs(..), unite)
+import EventInputs (NotebookInputs(..),NotebookInput(..), unite)
 
 
 
@@ -119,15 +119,15 @@ createControl frame1 inputs setupIO = let input = unite nbcs in do
     createOutputs c frame1 input
 -}
 
-createNotebook :: Frameworks t => Frame () -> [NotebookInputs t] -> (AuiNotebook () -> IO ())  -> Moment t (NotebookOutputs t)
+createNotebook :: (Frameworks t)  => Frame () -> [NotebookInput t] -> (AuiNotebook () -> IO ())  -> Moment t (NotebookOutputs t)
 createNotebook frame1 inputs setupIO = do
     notebook <- liftIO $ newNotebook frame1
     liftIO $ setupIO notebook
     outputs notebook frame1 (unite inputs)
 
 --TODO: can we combine this with creation of the AuiNotebook itself?
-outputs :: Frameworks t => AuiNotebook () -> Frame () -> NotebookInputs t -> Moment t (NotebookOutputs t)
-outputs notebook frame1 (NotebookInputs eNew eOpen eSave eSaveAll) = do
+outputs :: Frameworks t => AuiNotebook () -> Frame () -> NotebookInput t -> Moment t (NotebookOutputs t)
+outputs notebook frame1 (NotebookInput eNew eOpen eSave eSaveAll) = do
     eNewFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eNew
     eNewNotebookPage :: Event t NotebookPage <- (addEmptySourceTab notebook) `ioReaction`  eNewFileDialogNotebookPage
     eOpenFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eOpen

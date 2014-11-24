@@ -74,7 +74,7 @@ networkDescription = do
 
 
     ---- AuiManager setup ]
--------------------------------------------http://www.reddit.com/----------------------
+-----------------------------------------------------------------
 
 
        -- NOTE: DO NOT USE "command" event for menuItems. It WILL cause duplicate event firings on menus attached to the menubar, but not sub-menus or context menus.
@@ -94,7 +94,7 @@ networkDescription = do
     eNewDialogOk <- loadFileWithDialog New [Haskell] frame1 eNewMenuItem
     eOpenDialogOk <- loadFileWithDialog Open [Haskell] frame1 eOpenMenuItem
 
-    let notebookInputs = NotebookInputs eNewDialogOk  eOpenDialogOk
+    let notebookInputs = NotebookInput eNewDialogOk  eOpenDialogOk
                              eSaveMenuItem eSaveAllMenuItem
 
 
