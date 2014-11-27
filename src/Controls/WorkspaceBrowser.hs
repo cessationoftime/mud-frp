@@ -36,12 +36,11 @@ createWorkspaceBrowser frame1 inputs setupIO = do
     (panel,tree,buttonCreateWS,buttonOpenWS) <- liftIO $ setup frame1
     eButtonCreateWS  <- event0 buttonCreateWS command
     eButtonOpenWS <- event0 buttonOpenWS command
-    eCreateDialogOk <- loadFileWithDialog New [Workspace] frame1 eButtonCreateWS
-    eOpenDialogOk <- loadFileWithDialog Open [Workspace] frame1 eButtonOpenWS
+    eCreateDialogOk <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eButtonCreateWS
+    eOpenDialogOk <- fileDialogOkEvent Open "" [Workspace] frame1 eButtonOpenWS
     let wbInput = WorkspaceBrowserInput eCreateDialogOk eOpenDialogOk
-        li =  wbInput:inputs
     liftIO $ setupIO $ WorkspaceBrowser panel
-    outputs tree frame1 $ unite li
+    outputs tree frame1 $ unite (wbInput:inputs)
 
 
 outputs :: (Frameworks t) => TreeCtrl () -> Frame () -> WorkspaceBrowserInput t -> Moment t (WorkspaceBrowserOutputs t)

@@ -13,16 +13,14 @@
 --
 -----------------------------------------------------------------------------
 
-module Dialogs (loadFileWithDialog, DialogDescriptor(..), DialogOpenMode(..)) where
+module Dialogs (fileDialogOkEvent, DialogDescriptor(..), DialogOpenMode(..)) where
 import RBWX.RBWX
 
 
-fileOpenDialog1 :: Window a -> Bool -> Bool -> String -> [(String,[String])] -> FilePath -> FilePath -> ChainIO DialogResult
-fileOpenDialog1 parent rememberCurrentDir allowReadOnly message wildcards directory filename result
+fileDialog1 :: DialogOpenMode -> String -> [(String,[String])] -> FilePath -> FilePath -> Window a -> ChainIO DialogResult
+fileDialog1 dialogOpenMode message wildcards directory filename parent result
   = fileDialog parent (curry result) flags message wildcards directory filename
-  where
-    flags
-      = wxOPEN .+. (if rememberCurrentDir then wxCHANGE_DIR else 0) .+. (if allowReadOnly then 0 else wxHIDE_READONLY)
+  where flags = dialogModeFlags dialogOpenMode
 
 -- |type representing the FileDialog and it's result
 type DialogResult = (FileDialog (), Int)
@@ -50,9 +48,9 @@ eventDialogOkFilePath :: Frameworks t => Event t DialogResult ->  Moment t (Even
 eventDialogOkFilePath eDialogFinish = fileDialogGetPath `mapIOreaction` (eventDialogOk eDialogFinish)
 
 -- | setup the eventNetwork to show an openFileDialog in the given Window when the given event is received. And load the file into the sourceControl
-fileDialogOkEvent :: Frameworks t => String ->  [DialogDescriptor] -> Window a -> Event t b -> Moment t (Event t FilePath)
-fileDialogOkEvent title fileDescs frame1 event = do
-  let openFileDialog = fileOpenDialog1 frame1 True True title (descriptor <$> fileDescs) "" ""
+fileDialogOkEventEx :: Frameworks t => String -> DialogOpenMode -> String -> [DialogDescriptor] -> Window a -> Event t b -> Moment t (Event t FilePath)
+fileDialogOkEventEx title fileMode fileName fileDescs frame1 event = do
+  let openFileDialog = fileDialog1 fileMode title (descriptor <$> fileDescs) "" fileName frame1
   eGetDialogFinish <- eventDialogResult openFileDialog event
   eGetDialogOkFilePath  <- eventDialogOkFilePath eGetDialogFinish
   return eGetDialogOkFilePath
@@ -62,6 +60,15 @@ data DialogOpenMode = New | Open
 instance Show DialogOpenMode where
   show New = "New File"
   show Open = "Open File"
+
+dialogModeFlags :: DialogOpenMode -> Int
+dialogModeFlags mode =
+  case mode of
+    -- use save dialog, remember current directory, Show overwrite prompt
+    New -> wxSAVE .+. wxCHANGE_DIR .+. wxOVERWRITE_PROMPT
+    -- use open dialog, remember current directory, hide readonly
+    Open -> wxOPEN .+. wxCHANGE_DIR  .+. wxHIDE_READONLY
+
 
 data DialogDescriptor = Haskell | Workspace | Project | Nix | Cabal
 
@@ -82,5 +89,6 @@ fileExtensions Cabal = ["*.cabal"]
 descriptor :: DialogDescriptor -> (String,[String])
 descriptor fd = (show fd,fileExtensions fd)
 
-loadFileWithDialog fileMode = fileDialogOkEvent (show (fileMode :: DialogOpenMode))
+fileDialogOkEvent :: Frameworks t => DialogOpenMode -> String -> [DialogDescriptor] -> Window a -> Event t b -> Moment t (Event t FilePath)
+fileDialogOkEvent fileMode fileName = fileDialogOkEventEx (show (fileMode :: DialogOpenMode)) fileMode fileName
 

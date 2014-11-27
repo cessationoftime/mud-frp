@@ -91,8 +91,8 @@ networkDescription = do
 
     -- [[[[ Notebook
 
-    eNewDialogOk <- loadFileWithDialog New [Haskell] frame1 eNewMenuItem
-    eOpenDialogOk <- loadFileWithDialog Open [Haskell] frame1 eOpenMenuItem
+    eNewDialogOk <- fileDialogOkEvent New "" [Haskell] frame1 eNewMenuItem
+    eOpenDialogOk <- fileDialogOkEvent Open "" [Haskell] frame1 eOpenMenuItem
 
     let notebookInputs = NotebookInput eNewDialogOk  eOpenDialogOk
                              eSaveMenuItem eSaveAllMenuItem
