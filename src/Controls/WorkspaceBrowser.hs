@@ -35,18 +35,21 @@ data WorkspaceBrowserData =
 data LayoutMode = None | HasWorkspace | HasProject
 
 layoutWhen :: WorkspaceBrowserData -> IO ()
+-- when nothing is open
 layoutWhen (Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) = do
       _ <- windowHide workspaceTree
       _ <- windowHide buttonCreateProject
       _ <- windowShow buttonCreateWS
       _ <- windowShow buttonOpenWS
       set workspacePanel [ layout := fill $ column 2 [ widget buttonOpenWS, widget buttonCreateWS ] ]
+-- when only workspace is open, no projects
 layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode []) = do
       _ <- windowShow workspaceTree
       _ <- windowShow buttonCreateProject
       _ <- windowHide buttonCreateWS
       _ <- windowHide buttonOpenWS
       set workspacePanel [ layout := fill $ row 2 [widget workspaceTree, widget buttonCreateProject ] ]
+-- when one or more projects are open
 layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode projNodes) = do
       _ <- windowShow workspaceTree
       _ <- windowHide buttonCreateProject
@@ -67,7 +70,7 @@ createWorkspaceBrowser frame1 inp setupIO = do
     eButtonOpenWS <- event0 buttonOpenWS command
     eCreateWorkspaceOk <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eButtonCreateWS
     eOpenWorkspaceOk <- fileDialogOkEvent Open "" [Workspace] frame1 eButtonOpenWS
-    eCreateProjectOk <- fileDialogOkEvent New "NewProject.n6proj" [Project] frame1 eButtonCreateWS
+    eCreateProjectOk <- fileDialogOkEvent New "NewProject.n6proj" [Project] frame1 eButtonCreateProject
     liftIO $ setupIO $ WorkspaceBrowser panel
     -- create newEvent to use to break the cyclical dependency between "loader" and the workspaceData behavior. This can be though of as a "helical dependency" since it is still dependent on the previous value in time
     (eventUpdateWorkspaceData,eventUpdateWorkspaceDataInput) <- Frame.newEvent
@@ -95,8 +98,7 @@ createWorkspaceBrowser frame1 inp setupIO = do
 loadProject :: WorkspaceBrowserData -> FilePath -> IO WorkspaceBrowserData
 loadProject wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode projNodes) fp = do
     windowFreeze workspacePanel
-    layoutWhen wbData
-    fileExists <- doesFileExist fp
+    fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
 
@@ -108,15 +110,16 @@ loadProject wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS but
     treeCtrlAddSubDirs workspaceTree wsNode
     --treeCtrlExpandAllChildren workspaceTree root
 
+    let newWbData = Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode (newProjNode:projNodes)
+    layoutWhen newWbData
     _ <- windowLayout frame1 -- need to run this or the workspaceTree can appear tiny and in the wrong location
     windowThaw workspacePanel
-    return $ Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode (newProjNode:projNodes)
+    return newWbData
 
 loadWorkspace :: WorkspaceBrowserData -> FilePath -> IO WorkspaceBrowserData
 loadWorkspace wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) fp = do
     windowFreeze workspacePanel
-    layoutWhen wbData
-    fileExists <- doesFileExist fp
+    fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
   -- set top node
@@ -124,10 +127,11 @@ loadWorkspace wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateW
 
     treeCtrlSetItemPath workspaceTree workspaceNode ""
 
-
+    let newWbData = Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject workspaceNode []
+    layoutWhen newWbData
     _ <- windowLayout frame1 -- need to run this or the workspaceTree can appear tiny and in the wrong location
     windowThaw workspacePanel
-    return $ Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject workspaceNode []
+    return newWbData
 
 createWsFile :: IO ()
 createWsFile = return ()
