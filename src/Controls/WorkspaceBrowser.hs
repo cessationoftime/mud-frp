@@ -23,26 +23,36 @@ import Paths (getDataFile)
 import RBWX.RBWX
 import EventInputs
 import Dialogs
+import qualified Reactive.Banana.Frameworks as Frame
+
 
 newtype WorkspaceBrowser = WorkspaceBrowser (Panel ())
 
-data WorkspaceBrowserData = WorkspaceBrowserData (Frame ()) (Panel ()) (TreeCtrl ())  (Button ()) (Button ())
+data WorkspaceBrowserData =
+  Nodeless (Frame ()) (Panel ()) (TreeCtrl ())  (Button ()) (Button ()) (Button ()) |
+  Noded (Frame ()) (Panel ()) (TreeCtrl ())  (Button ()) (Button ()) (Button ()) (TreeItem) [TreeItem]
 
-layoutWhenWorkspaceUnloaded :: WorkspaceBrowserData -> IO ()
-layoutWhenWorkspaceUnloaded (WorkspaceBrowserData frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS) = do
-  _ <- windowHide workspaceTree
-  _ <- windowShow buttonCreateWS
-  _ <- windowShow buttonOpenWS
-  set workspacePanel [ layout := fill $ column 2 [ widget buttonOpenWS, widget buttonCreateWS ] ]
-  return ()
+data LayoutMode = None | HasWorkspace | HasProject
 
-layoutWhenWorkspaceLoaded :: WorkspaceBrowserData -> IO ()
-layoutWhenWorkspaceLoaded (WorkspaceBrowserData frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS) = do
-  _ <- windowShow workspaceTree
-  _ <- windowHide buttonCreateWS
-  _ <- windowHide buttonOpenWS
-  set workspacePanel [ layout := fill $ widget workspaceTree ]
-  return ()
+layoutWhen :: WorkspaceBrowserData -> IO ()
+layoutWhen (Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) = do
+      _ <- windowHide workspaceTree
+      _ <- windowHide buttonCreateProject
+      _ <- windowShow buttonCreateWS
+      _ <- windowShow buttonOpenWS
+      set workspacePanel [ layout := fill $ column 2 [ widget buttonOpenWS, widget buttonCreateWS ] ]
+layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode []) = do
+      _ <- windowShow workspaceTree
+      _ <- windowShow buttonCreateProject
+      _ <- windowHide buttonCreateWS
+      _ <- windowHide buttonOpenWS
+      set workspacePanel [ layout := fill $ row 2 [widget workspaceTree, widget buttonCreateProject ] ]
+layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode projNodes) = do
+      _ <- windowShow workspaceTree
+      _ <- windowHide buttonCreateProject
+      _ <- windowHide buttonCreateWS
+      _ <- windowHide buttonOpenWS
+      set workspacePanel [ layout := fill $ widget workspaceTree ]
 
 --workspaceBrowser :: Frameworks t => Window a -> Event t () -> Event t () -> Moment t (WorkspaceBrowser t)
 --workspaceBrowser notebook frame1 eOpen eCreate = do
@@ -50,51 +60,70 @@ layoutWhenWorkspaceLoaded (WorkspaceBrowserData frame1 workspacePanel workspaceT
 data WorkspaceBrowserOutputs t = WorkspaceBrowserOutputs Int
 
 createWorkspaceBrowser :: (Frameworks t) => Frame () -> [WorkspaceBrowserInput t] -> (WorkspaceBrowser -> IO ())  -> Moment t (WorkspaceBrowserOutputs t)
-createWorkspaceBrowser frame1 inputs setupIO = do
-    wbData@(WorkspaceBrowserData _ panel tree buttonCreateWS buttonOpenWS) <- liftIO $ setup frame1
+createWorkspaceBrowser frame1 inp setupIO = do
+    wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject) <- liftIO $ setup frame1
+    eButtonCreateProject  <- event0 buttonCreateProject command
     eButtonCreateWS  <- event0 buttonCreateWS command
     eButtonOpenWS <- event0 buttonOpenWS command
-    eCreateDialogOk <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eButtonCreateWS
-    eOpenDialogOk <- fileDialogOkEvent Open "" [Workspace] frame1 eButtonOpenWS
-    let wbInput = WorkspaceBrowserInput eCreateDialogOk eOpenDialogOk
+    eCreateWorkspaceOk <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eButtonCreateWS
+    eOpenWorkspaceOk <- fileDialogOkEvent Open "" [Workspace] frame1 eButtonOpenWS
+    eCreateProjectOk <- fileDialogOkEvent New "NewProject.n6proj" [Project] frame1 eButtonCreateWS
     liftIO $ setupIO $ WorkspaceBrowser panel
-    outputs wbData frame1 $ unite (wbInput:inputs)
+    --wbDataIO <- liftIO $ return $ return wbData
+    (eventUpdateWorkspaceData,eventUpdateWorkspaceDataInput) <- Frame.newEvent -- create newEvent to use to break the cyclical dependency between "loader" and the workspaceData behavior
+    let workspaceDataBehavior = stepper wbData eventUpdateWorkspaceData
+        wbInput = WorkspaceBrowserInput eCreateWorkspaceOk eOpenWorkspaceOk eCreateProjectOk
+        inputs =  unite $ wbInput:inp
+        loadW  =  (loadWorkspace <$> workspaceDataBehavior) <@> (eCreateWorkspaceOk `union` eOpenWorkspaceOk)
+        loadP = (loadProject <$> workspaceDataBehavior) <@> eCreateProjectOk
+        loader = loadW `union` loadP
+    reactimate $ (\wbdIO -> wbdIO >>= eventUpdateWorkspaceDataInput) <$> loader -- update the behavior with the new workSpaceData using a reactimate and eventZInput
+
+    return (WorkspaceBrowserOutputs 0)
 
 
-outputs :: (Frameworks t) => WorkspaceBrowserData -> Frame () -> WorkspaceBrowserInput t -> Moment t (WorkspaceBrowserOutputs t)
-outputs wbData frame1 (WorkspaceBrowserInput eCreateWS eOpenWS)  =
-  let e = eCreateWS `union` eOpenWS in do
-  reactimate $ (loadWS wbData) <$> e
-  return (WorkspaceBrowserOutputs 0)
+--outputs :: (Frameworks t) => WorkspaceBrowserData -> Frame () -> WorkspaceBrowserInput t -> Moment t (WorkspaceBrowserOutputs t)
+--outputs wbData frame1 (WorkspaceBrowserInput eCreateWS eOpenWS eCreateProject)  =
+ -- let
+ -- do
 
-loadWS :: WorkspaceBrowserData -> FilePath -> IO ()
-loadWS wbData@(WorkspaceBrowserData frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS) fp = do
+
+loadProject :: WorkspaceBrowserData ->  FilePath -> IO WorkspaceBrowserData
+loadProject wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode projNodes) fp = do
     windowFreeze workspacePanel
-    layoutWhenWorkspaceLoaded wbData
-
-    -- putStrLn fp
-    -- putStrLn fp
-   --  putStrLn fp
-  -- set top node
-
-
-    top <- treeCtrlAddRoot workspaceTree "Workspace" (imageIndex imgComputer) imageNone objectNull
-
-
-    treeCtrlSetItemPath workspaceTree top ""
+    layoutWhen wbData
+    fileExists <- doesFileExist fp
+    let baseName = takeBaseName fp
+    let directory = takeDirectory fp
 
      -- add root directory
-    (rootPath,rootName) <- getRootDir
-    root <- treeCtrlAppendItem workspaceTree top rootName (imageIndex imgDisk) imageNone objectNull
+    --(rootPath,rootName) <- getRootDir
+    newProjNode <- treeCtrlAppendItem workspaceTree wsNode baseName (imageIndex imgDisk) imageNone objectNull
 
-
-    treeCtrlSetItemPath workspaceTree root rootPath
-    treeCtrlAddSubDirs workspaceTree root
-    treeCtrlExpand workspaceTree root
+    treeCtrlSetItemPath workspaceTree wsNode directory
+    treeCtrlAddSubDirs workspaceTree wsNode
+    --treeCtrlExpandAllChildren workspaceTree root
 
     _ <- windowLayout frame1 -- need to run this or the workspaceTree can appear tiny and in the wrong location
     windowThaw workspacePanel
-    return ()
+    return $ Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode (newProjNode:projNodes)
+
+loadWorkspace :: WorkspaceBrowserData ->  FilePath -> IO WorkspaceBrowserData
+loadWorkspace wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) fp = do
+    windowFreeze workspacePanel
+    layoutWhen wbData
+    fileExists <- doesFileExist fp
+    let baseName = takeBaseName fp
+    let directory = takeDirectory fp
+  -- set top node
+    workspaceNode <- treeCtrlAddRoot workspaceTree ("Workspace: " ++ baseName) (imageIndex imgComputer) imageNone objectNull
+
+    treeCtrlSetItemPath workspaceTree workspaceNode ""
+
+
+    _ <- windowLayout frame1 -- need to run this or the workspaceTree can appear tiny and in the wrong location
+    windowThaw workspacePanel
+    return $ Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject workspaceNode []
 
 createWsFile :: IO ()
 createWsFile = return ()
@@ -110,6 +139,7 @@ setup window1 = do
 
     openWorkspaceButton <- button workspacePanel [text := "Open Workspace"]
     createWorkspaceButton <- button workspacePanel [text := "Create Workspace"]
+    createProjectButton <- button workspacePanel [text := "Create Project"]
 
 
     --TODO: embed the buttons in the workspace browser.
@@ -124,10 +154,8 @@ setup window1 = do
 
     treeCtrlAssignImageList workspaceTree images  {- 'assign' deletes the imagelist on delete -}
 
-   -- set workspacePanel [ layout := fill $ column 2 [ widget openWorkspaceButton, widget createWorkspaceButton, widget workspaceTree ] ]
-
-    let wbData = WorkspaceBrowserData window1 workspacePanel workspaceTree createWorkspaceButton openWorkspaceButton
-    layoutWhenWorkspaceUnloaded wbData
+    let wbData = Nodeless window1 workspacePanel workspaceTree createWorkspaceButton openWorkspaceButton createProjectButton
+    layoutWhen wbData
 
     windowThaw workspacePanel
 
@@ -272,7 +300,7 @@ treeCtrlAddSubDirs t parent
            treeCtrlSetItemPath t item path
 
 
-{--------------------------------------------------------------------------------
+{----------------------Directory----------------------------------------------------------
    General directory operations
 --------------------------------------------------------------------------------}
 

@@ -39,10 +39,11 @@ class WorkspaceBrowserInputs a where
 data WorkspaceBrowserInput t = WorkspaceBrowserInput {
    eiCreateWorkspace :: Event t FilePath
   ,eiOpenWorkspace :: Event t FilePath
+  ,eiCreateProject :: Event t FilePath
 }
 
 instance UniteInputs (WorkspaceBrowserInput t) where
-  unite inputs = WorkspaceBrowserInput (uni eiCreateWorkspace) (uni eiOpenWorkspace)
+  unite inputs = WorkspaceBrowserInput (uni eiCreateWorkspace) (uni eiOpenWorkspace) (uni eiCreateProject)
     where  uni x =(unions $ x <$> inputs)
 
 data AuiManagerInput t = AuiManagerInput {
