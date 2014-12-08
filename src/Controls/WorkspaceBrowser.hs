@@ -81,7 +81,7 @@ createWorkspaceBrowser frame1 inp setupIO = do
         loader = loadW `union` loadP
 
     -- send event to update the workspaceDataBehavior
-    reactimate $ (\wbdIO -> wbdIO >>= eventUpdateWorkspaceDataInput) <$> loader -- update the behavior with the new workSpaceData using a reactimate and eventZInput
+    reactimate $ (\wbdIO ->  wbdIO >>= eventUpdateWorkspaceDataInput) <$> loader -- update the behavior with the new workSpaceData using a reactimate and eventZInput
 
     return (WorkspaceBrowserOutputs 0)
 
@@ -92,7 +92,7 @@ createWorkspaceBrowser frame1 inp setupIO = do
  -- do
 
 
-loadProject :: WorkspaceBrowserData ->  FilePath -> IO WorkspaceBrowserData
+loadProject :: WorkspaceBrowserData -> FilePath -> IO WorkspaceBrowserData
 loadProject wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode projNodes) fp = do
     windowFreeze workspacePanel
     layoutWhen wbData
@@ -112,7 +112,7 @@ loadProject wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS but
     windowThaw workspacePanel
     return $ Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode (newProjNode:projNodes)
 
-loadWorkspace :: WorkspaceBrowserData ->  FilePath -> IO WorkspaceBrowserData
+loadWorkspace :: WorkspaceBrowserData -> FilePath -> IO WorkspaceBrowserData
 loadWorkspace wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) fp = do
     windowFreeze workspacePanel
     layoutWhen wbData
