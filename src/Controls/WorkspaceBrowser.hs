@@ -72,19 +72,14 @@ createWorkspaceBrowser frame1 inp setupIO = do
     eOpenWorkspaceOk <- fileDialogOkEvent Open "" [Workspace] frame1 eButtonOpenWS
     eCreateProjectOk <- fileDialogOkEvent New "NewProject.n6proj" [Project] frame1 eButtonCreateProject
     liftIO $ setupIO $ WorkspaceBrowser panel
-    -- create newEvent to use to break the cyclical dependency between "loader" and the workspaceData behavior. This can be though of as a "helical dependency" since it is still dependent on the previous value in time
-    (eventUpdateWorkspaceData,eventUpdateWorkspaceDataInput) <- Frame.newEvent
 
     -- track workspaceData as a behavior, run IO and use output to update the behavior.
-    let workspaceDataBehavior = stepper wbData eventUpdateWorkspaceData
-        wbInput = WorkspaceBrowserInput eCreateWorkspaceOk eOpenWorkspaceOk eCreateProjectOk
+    let wbInput = WorkspaceBrowserInput eCreateWorkspaceOk eOpenWorkspaceOk eCreateProjectOk
         inputs =  unite $ wbInput:inp
-        loadW  =  (loadWorkspace <$> workspaceDataBehavior) <@> (eCreateWorkspaceOk `union` eOpenWorkspaceOk)
-        loadP = (loadProject <$> workspaceDataBehavior) <@> eCreateProjectOk
+        loadW  =  loadWorkspace <$> (eCreateWorkspaceOk `union` eOpenWorkspaceOk)
+        loadP = loadProject <$> eCreateProjectOk
         loader = loadW `union` loadP
-
-    -- send event to update the workspaceDataBehavior
-    reactimate $ (\wbdIO ->  wbdIO >>= eventUpdateWorkspaceDataInput) <$> loader -- update the behavior with the new workSpaceData using a reactimate and eventZInput
+    workspaceDataBehavior <- ioAccumB wbData loader
 
     return (WorkspaceBrowserOutputs 0)
 
@@ -95,8 +90,8 @@ createWorkspaceBrowser frame1 inp setupIO = do
  -- do
 
 
-loadProject :: WorkspaceBrowserData -> FilePath -> IO WorkspaceBrowserData
-loadProject wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode projNodes) fp = do
+loadProject :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
+loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode projNodes) = do
     windowFreeze workspacePanel
     fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
     let baseName = takeBaseName fp
@@ -116,8 +111,8 @@ loadProject wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS but
     windowThaw workspacePanel
     return newWbData
 
-loadWorkspace :: WorkspaceBrowserData -> FilePath -> IO WorkspaceBrowserData
-loadWorkspace wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) fp = do
+loadWorkspace :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
+loadWorkspace fp wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) = do
     windowFreeze workspacePanel
     fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
     let baseName = takeBaseName fp
