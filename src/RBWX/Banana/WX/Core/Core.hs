@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 --
--- Module      :  RBWX.RBWX
+-- Module      :  OutputIsInput
 -- Copyright   :
 -- License     :  BSD3
 --
@@ -10,16 +10,21 @@
 --
 -- |
 --
+--  This module handles side effects, and provides functions to use in the situation where
+--  output (reactimate) needs to trigger IO and that IO generates a value to use as a new input to the network.
+--
 -----------------------------------------------------------------------------
 
+--TODO, rename module to InputIsOutput.
 module RBWX.Banana.WX.Core.Core (
-  module RBWX.Banana.WX.Core.Lift,
-  module RBWX.Banana.WX.Core.ContextMenu,
-  mapIOreaction,
-  mapIOreaction2,
-  mapIOchainreaction,
-  ioReaction,
-  ChainIO
+   module RBWX.Banana.WX.Core.Lift
+  ,module RBWX.Banana.WX.Core.ContextMenu
+  ,mapIOreaction
+  ,mapIOreaction2
+  ,mapIOchainreaction
+  ,ioReaction
+  ,ioAccumB
+  ,ChainIO
   ,wxID_ANY
 ) where
 
@@ -41,30 +46,18 @@ ioReaction func ev = do
      (adder,handler) <- liftIO newAddHandler
      reactimate $ (\aa -> func aa >> handler aa) <$> ev
      fromAddHandler adder
-{-
-ioAccumB :: Frameworks t => (a -> f -> IO a) -> a -> Event t f ->  Moment t (Behavior t a)
-ioAccumB f acc ev = do
-   let ff = f acc
-   ev1 <- mapIOreaction  ff ev
-   return $ stepper acc ev1
 
-
-ioAccumB2 :: Frameworks t => (a -> IO a) -> a -> Event t a ->  Moment t (Behavior t a)
-ioAccumB2 f acc ev = do
-   ev1 <- mapIOreaction  ff ev
-   return $ stepper acc ev1
-
--}
-
-
-{-
+-- | start with an initial value and combine with incoming events, perform the IO action upon receiving the event. Use the IO output to upade the Behavior.
 ioAccumB :: Frameworks t => a -> Event t (a -> IO a) ->  Moment t (Behavior t a)
 ioAccumB acc ev = do
-  (adder,handler) <- liftIO newAddHandler
-  reactimate $ handler <$> ev
-  fromAddHandler (func `mapIO` adder)
-  stepper acc
--}
+    (eventZ,eventZIn) <- Frame.newEvent
+    -- track state as a behavior, run IO function from event and use output to update the behavior.
+    let steppingBehavior = stepper acc eventZ
+        b2 = (\bb ee -> ee bb >>= eventZIn) <$> steppingBehavior
+    -- update the behavior with the new state using reactimate and eventZInput
+    reactimate $ b2 <@> ev
+
+    return steppingBehavior
 
 -- | internal shared function for mapIOReaction and mapIOreaction2
 procIO :: (b  -> IO ()) -> (a -> IO b) -> a -> IO ()
