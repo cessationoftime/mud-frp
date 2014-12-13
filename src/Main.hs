@@ -38,7 +38,7 @@ mainNetwork = do
 networkDescription :: forall t. Frameworks t => Moment t ()
 networkDescription = do
     -- Layout
-    frame1 <- frame [ text  := "Editor for the Functional Interactive Fiction Engine (E-FIFE)"
+    frame1 <- liftIO $ frameMax [ text  := "Editor for the Functional Interactive Fiction Engine (E-FIFE)"
       , resizeable := True]
 
     status <- statusField [text := "Loading MUD Editor"]

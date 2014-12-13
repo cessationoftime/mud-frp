@@ -32,3 +32,5 @@ window2Selection mbW = do
   id2 <- lift id
   return id2
 
+frameMax :: [Prop (Frame ())] -> IO (Frame ())
+frameMax props = frameEx (frameDefaultStyle .+. wxMAXIMIZE) props objectNull
