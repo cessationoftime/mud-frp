@@ -22,7 +22,7 @@ module Aui (
 ) where
 import Dialogs
 import SourceEditor
-import Controls.Mud.MapEditor
+import MapEditor
 import RBWX.RBWX
 import System.FilePath
 import Data.List (find,partition)

@@ -1,11 +1,11 @@
 import Dialogs
 import SourceEditor
-import Controls.Mud.MapEditor
+import MapEditor
 import RBWX.RBWX
 import Aui
 import Data.List (find)
 import Data.Maybe (fromMaybe,maybeToList)
-import Controls.WorkspaceBrowser
+import WorkspaceBrowser
 import EventInputs
 import AuiManager
 

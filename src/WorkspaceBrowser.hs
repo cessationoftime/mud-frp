@@ -13,7 +13,7 @@
 --
 -----------------------------------------------------------------------------
 
-module Controls.WorkspaceBrowser (createWorkspaceBrowser,WorkspaceBrowserOutputs, WorkspaceBrowser(WorkspaceBrowser)) where
+module WorkspaceBrowser (createWorkspaceBrowser,WorkspaceBrowserOutputs, WorkspaceBrowser(WorkspaceBrowser)) where
 
 import System.Directory
 import System.FilePath
@@ -115,6 +115,10 @@ loadWorkspace :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
 loadWorkspace fp wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) = do
     windowFreeze workspacePanel
     fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
+    if fileExists
+       then return ()
+       else createWorkspaceFile fp
+
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
   -- set top node
@@ -128,11 +132,16 @@ loadWorkspace fp wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCrea
     windowThaw workspacePanel
     return newWbData
 
-createWsFile :: IO ()
-createWsFile = return ()
+createProjectFile :: FilePath -> IO ()
+createProjectFile fp = do
+  writeFile fp ""
 
-openWsFile :: IO ()
-openWsFile = return ()
+createWorkspaceFile :: FilePath -> IO ()
+createWorkspaceFile fp = do
+  writeFile fp "[]"
+
+openWsFile :: FilePath -> IO String
+openWsFile fp = readFile fp
 
 setup ::  Frame () -> IO WorkspaceBrowserData
 setup window1 = do

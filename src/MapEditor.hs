@@ -13,7 +13,7 @@
 --
 -----------------------------------------------------------------------------
 
-module Controls.Mud.MapEditor (mapEditorIO,gridHeight,gridWidth) where
+module MapEditor (mapEditorIO,gridHeight,gridWidth) where
 
 import System.Random
 import Paths (getDataFile)
