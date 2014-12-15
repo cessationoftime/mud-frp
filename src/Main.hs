@@ -2,7 +2,7 @@ import Dialogs
 import SourceEditor
 import MapEditor
 import RBWX.RBWX
-import Aui
+import Notebook
 import Data.List (find)
 import Data.Maybe (fromMaybe,maybeToList)
 import WorkspaceBrowser
@@ -94,21 +94,21 @@ networkDescription = do
     eNewDialogOk <- fileDialogOkEvent New "NewSource.hs" [Haskell] frame1 eNewMenuItem
     eOpenDialogOk <- fileDialogOkEvent Open "" [Haskell] frame1 eOpenMenuItem
 
-    let notebookInputs = NotebookInput eNewDialogOk  eOpenDialogOk
-                             eSaveMenuItem eSaveAllMenuItem
+    let notebookInputs = unions [(NewPage <$> eNewDialogOk),(OpenPage <$> eOpenDialogOk),
+                                 (Save <$ eSaveMenuItem),(SaveAll <$ eSaveAllMenuItem)]
 
 
 
     NotebookOutputs _ _ _ _ _ _
       eChangingNotebookPage
       eChangedNotebookPage eCloseNotebookPage eClosedNotebookPage eLastClose eLastClosed
-      bPages <- createNotebook frame1 [notebookInputs] (\n -> addPane (objectCast n) wxCENTER "Source Pane")
+      bPages <- createNotebook frame1 notebookInputs (\n -> addPane (objectCast n) wxCENTER "Source Pane")
 
      --  Notebook ]]]]
 
     -- [[[[ TreeCtrl
 
-    workspaceBrowserOutputs <- createWorkspaceBrowser frame1 [] (\(WorkspaceBrowser p) -> addPane (objectCast p) wxRIGHT "Workspace Browser")
+    workspaceBrowserOutputs <- createWorkspaceBrowser frame1 never (\(WorkspaceBrowser p) -> addPane (objectCast p) wxRIGHT "Workspace Browser")
 
      -- TreeCtrl ]]]]
 

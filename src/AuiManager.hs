@@ -20,7 +20,7 @@ module AuiManager (
   ,withWindow
 ) where
 import RBWX.RBWX
-import EventInputs (AuiManagerInputs(..), unite, eiAddPane)
+--import EventInputs (AuiManagerInputs(..), unite, eiAddPane)
 import GHC.Exts
 
 

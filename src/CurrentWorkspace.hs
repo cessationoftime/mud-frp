@@ -12,15 +12,9 @@
 --
 -----------------------------------------------------------------------------
 
-module CurrentWorkspace (
+module CurrentWorkspace where
+import CurrentWorkspaceData
 
-) where
-
-
-
-ioReaction :: Frameworks t =>
-   (a -> IO ()) -> Event t a ->  Moment t (Event t a)
-ioReaction func ev = do
-     (adder,handler) <- liftIO newAddHandler
-     reactimate $ (\aa -> func aa >> handler aa) <$> ev
-     fromAddHandler adder
+currentWorkspaceSetup :: Frameworks t => Moment t ()
+currentWorkspaceSetup = do
+  accumD (WorkspaceState "" [])

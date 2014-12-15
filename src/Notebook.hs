@@ -13,7 +13,7 @@
 -----------------------------------------------------------------------------
 {-# LANGUAGE Rank2Types #-}
 
-module Aui (
+module Notebook (
  createNotebook
 ,matchesNotebookPage
 ,NotebookOutputs(NotebookOutputs)
@@ -27,11 +27,7 @@ import RBWX.RBWX
 import System.FilePath
 import Data.List (find,partition)
 import Data.Maybe (fromJust,listToMaybe,maybeToList)
-import EventInputs (NotebookInputs(..),NotebookInput(..), unite)
-
-
-
-
+import EventInputs (NotebookInput,NotebookChange (..), justOpenPage, justNewPage)
 newNotebook :: Window a -> IO (AuiNotebook ())
 newNotebook frame1 = do
 -- create the notebook off-window to avoid flicker
@@ -119,15 +115,17 @@ createControl frame1 inputs setupIO = let input = unite nbcs in do
     createOutputs c frame1 input
 -}
 
-createNotebook :: (Frameworks t)  => Frame () -> [NotebookInput t] -> (AuiNotebook () -> IO ())  -> Moment t (NotebookOutputs t)
-createNotebook frame1 inputs setupIO = do
+createNotebook :: (Frameworks t)  => Frame () -> NotebookInput t -> (AuiNotebook () -> IO ())  -> Moment t (NotebookOutputs t)
+createNotebook frame1 input setupIO = do
     notebook <- liftIO $ newNotebook frame1
     liftIO $ setupIO notebook
-    outputs notebook frame1 (unite inputs)
+    outputs notebook frame1 input
 
 --TODO: can we combine this with creation of the AuiNotebook itself?
 outputs :: Frameworks t => AuiNotebook () -> Frame () -> NotebookInput t -> Moment t (NotebookOutputs t)
-outputs notebook frame1 (NotebookInput eNew eOpen eSave eSaveAll) = do
+outputs notebook frame1 input = do
+    let eNew = filterJust $ justNewPage <$> input
+        eOpen = filterJust $ justOpenPage <$> input
     eNewFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eNew
     eNewNotebookPage :: Event t NotebookPage <- (addEmptySourceTab notebook) `ioReaction`  eNewFileDialogNotebookPage
     eOpenFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eOpen

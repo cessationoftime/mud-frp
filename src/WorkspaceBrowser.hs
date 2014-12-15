@@ -62,7 +62,7 @@ layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenW
 
 data WorkspaceBrowserOutputs t = WorkspaceBrowserOutputs Int
 
-createWorkspaceBrowser :: (Frameworks t) => Frame () -> [WorkspaceBrowserInput t] -> (WorkspaceBrowser -> IO ())  -> Moment t (WorkspaceBrowserOutputs t)
+createWorkspaceBrowser :: (Frameworks t) => Frame () -> Event t (WorkspaceBrowserChange,FilePath) -> (WorkspaceBrowser -> IO ())  -> Moment t (WorkspaceBrowserOutputs t)
 createWorkspaceBrowser frame1 inp setupIO = do
     wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject) <- liftIO $ setup frame1
     eButtonCreateProject  <- event0 buttonCreateProject command
@@ -74,9 +74,9 @@ createWorkspaceBrowser frame1 inp setupIO = do
     liftIO $ setupIO $ WorkspaceBrowser panel
 
     -- track workspaceData as a behavior, run IO and use output to update the behavior.
-    let wbInput = WorkspaceBrowserInput eCreateWorkspaceOk eOpenWorkspaceOk eCreateProjectOk
-        inputs =  unite $ wbInput:inp
-        loadW  =  loadWorkspace <$> (eCreateWorkspaceOk `union` eOpenWorkspaceOk)
+  --  let wbInput = WorkspaceBrowserInput eCreateWorkspaceOk eOpenWorkspaceOk eCreateProjectOk
+--        inputs =  unite $ wbInput:inp
+    let loadW  =  loadWorkspace <$> (eCreateWorkspaceOk `union` eOpenWorkspaceOk)
         loadP = loadProject <$> eCreateProjectOk
         loader = loadW `union` loadP
     workspaceDataBehavior <- ioAccumB wbData loader
