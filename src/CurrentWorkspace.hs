@@ -13,7 +13,6 @@
 -----------------------------------------------------------------------------
 
 module CurrentWorkspace where
-import CurrentWorkspaceData
 
 currentWorkspaceSetup :: Frameworks t => Moment t ()
 currentWorkspaceSetup = do

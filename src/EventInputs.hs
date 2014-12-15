@@ -15,8 +15,8 @@
 
 module EventInputs where
 import RBWX.RBWX
-import CurrentWorkspaceData
 
+-------------- Notebook
 
 type NotebookInput t = Event t NotebookChange
 data NotebookChange = NewPage FilePath | OpenPage FilePath | Save | SaveAll
@@ -29,5 +29,17 @@ justOpenPage :: NotebookChange ->  Maybe FilePath
 justOpenPage (OpenPage fp) = Just fp
 justOpenPage _ = Nothing
 
+-------------- WorkspaceBrowser
+
 type WorkspaceBrowserInput t = Event t WorkspaceBrowserChange
-data WorkspaceBrowserChange = CreateWorkspace FilePath | OpenWorkspace FilePath | CreateProject FilePath
+data WorkspaceBrowserChange = StateChange WorkspaceState | CreateWorkspace FilePath | CreateProject FilePath
+
+-------------- CurrentWorkspace
+
+type Project = FilePath
+data WorkspaceState = WorkspaceState { workspaceFile :: FilePath, projects :: [Project] }
+
+data ChangeType = OpenWorkspace FilePath | CloseWorkspace | OpenProject FilePath | CloseProject FilePath
+
+-- | the change that has taken place.  This data should be sent to downstream events.
+data WorkspaceStateChange = WorkspaceStateChange {change :: ChangeType, old :: WorkspaceState, new :: WorkspaceState}
