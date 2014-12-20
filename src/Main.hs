@@ -33,8 +33,8 @@ mainNetwork = do
  --   cmb <- comboBox frame1 [items := ["item1","item2"]]
 
     network <- compile networkDescription
-    s <- showNetwork network
-    putStrLn s
+    --s <- showNetwork network
+    --putStrLn s
     actuate network
 
  -- event network
@@ -76,6 +76,10 @@ networkDescription = do
     let bWorkspaceState =  accumB (WorkspaceState "" []) (unions [ewbCreateProjectOk,ewbCreateWorkspaceOk,ewbOpenWorkspaceOk])
 
 
+    -- view the workspace State as it changes
+    --cbws <- changes bWorkspaceState
+    --reactimate' $ (\f -> logErrorMsg . show <$> f) <$> cbws
+
 
     -- [[[[ AuiManager setup
   --  (auiEvent1 :: Event t [(Window (), Int, String)] ,addPanehandler) <- newEvent
@@ -88,7 +92,7 @@ networkDescription = do
   --  let addPane b c w =  auiManagerAddPane aui w b c >> return ()
 
     -- finish wiring workspace browser GUI
-    workspaceBrowserOutut <- wireupWorkspaceBrowser bWorkspaceState (\(WorkspaceBrowser p) -> addPane (objectCast p) wxRIGHT "Workspace Browser")
+    workspaceBrowserOutput <- wireupWorkspaceBrowser bWorkspaceState (\(WorkspaceBrowser p) -> addPane (objectCast p) wxRIGHT "Workspace Browser")
 
 
 

@@ -37,7 +37,7 @@ data WorkspaceBrowserChange = WorkspaceStateInit | StateChange WorkspaceState | 
 -------------- CurrentWorkspace
 
 type Project = FilePath
-data WorkspaceState = WorkspaceState { workspaceFile :: FilePath, projects :: [Project] }
+data WorkspaceState = WorkspaceState { workspaceFile :: FilePath, projects :: [Project] } deriving (Eq,Show)
 
 data WorkspaceChangeType = OpenWorkspace FilePath | CloseWorkspace | OpenProject FilePath | CloseProject FilePath
 
