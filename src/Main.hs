@@ -8,6 +8,7 @@ import Data.Maybe (fromMaybe,maybeToList)
 import WorkspaceBrowser
 import EventInputs
 import AuiManager
+import CurrentWorkspace
 
 -- TODO: Haskelletor
 
@@ -32,6 +33,8 @@ mainNetwork = do
  --   cmb <- comboBox frame1 [items := ["item1","item2"]]
 
     network <- compile networkDescription
+    s <- showNetwork network
+    putStrLn s
     actuate network
 
  -- event network
@@ -62,6 +65,18 @@ networkDescription = do
     menuLine fileMenu
     quit  <- menuQuit fileMenu [help := "Quit the ide"]
 
+    -- setup workspace browser GUI
+    (eCreateProjectOk,eCreateWorkspaceOk,eOpenWorkspaceOk, wireupWorkspaceBrowser) <- setupWorkspaceBrowser frame1
+
+    let ewbCreateProjectOk = (\fp (WorkspaceState wfp prjs) -> WorkspaceState wfp (fp:prjs)) <$> eCreateProjectOk
+        ewbCreateWorkspaceOk = (\fp (WorkspaceState _ prjs) -> WorkspaceState fp prjs) <$> eCreateWorkspaceOk
+        ewbOpenWorkspaceOk = (\fp (WorkspaceState _ prjs) -> WorkspaceState fp prjs) <$> eOpenWorkspaceOk
+
+    --represents the current workspace state
+    let bWorkspaceState =  accumB (WorkspaceState "" []) (unions [ewbCreateProjectOk,ewbCreateWorkspaceOk,ewbOpenWorkspaceOk])
+
+
+
     -- [[[[ AuiManager setup
   --  (auiEvent1 :: Event t [(Window (), Int, String)] ,addPanehandler) <- newEvent
 
@@ -71,6 +86,10 @@ networkDescription = do
    -- auiManagerOutputs <- outputs aui []
     let addPane w b c =  withUnderlying aui (\a -> auiManagerAddPane a w b c >> return ())
   --  let addPane b c w =  auiManagerAddPane aui w b c >> return ()
+
+    -- finish wiring workspace browser GUI
+    workspaceBrowserOutut <- wireupWorkspaceBrowser bWorkspaceState (\(WorkspaceBrowser p) -> addPane (objectCast p) wxRIGHT "Workspace Browser")
+
 
 
     ---- AuiManager setup ]
@@ -108,7 +127,9 @@ networkDescription = do
 
     -- [[[[ TreeCtrl
 
-    workspaceBrowserOutputs <- createWorkspaceBrowser frame1 never (\(WorkspaceBrowser p) -> addPane (objectCast p) wxRIGHT "Workspace Browser")
+
+
+
 
      -- TreeCtrl ]]]]
 

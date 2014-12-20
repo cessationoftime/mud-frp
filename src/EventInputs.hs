@@ -32,14 +32,14 @@ justOpenPage _ = Nothing
 -------------- WorkspaceBrowser
 
 type WorkspaceBrowserInput t = Event t WorkspaceBrowserChange
-data WorkspaceBrowserChange = StateChange WorkspaceState | CreateWorkspace FilePath | CreateProject FilePath
+data WorkspaceBrowserChange = WorkspaceStateInit | StateChange WorkspaceState | CreateWorkspace FilePath | CreateProject FilePath
 
 -------------- CurrentWorkspace
 
 type Project = FilePath
 data WorkspaceState = WorkspaceState { workspaceFile :: FilePath, projects :: [Project] }
 
-data ChangeType = OpenWorkspace FilePath | CloseWorkspace | OpenProject FilePath | CloseProject FilePath
+data WorkspaceChangeType = OpenWorkspace FilePath | CloseWorkspace | OpenProject FilePath | CloseProject FilePath
 
 -- | the change that has taken place.  This data should be sent to downstream events.
-data WorkspaceStateChange = WorkspaceStateChange {change :: ChangeType, old :: WorkspaceState, new :: WorkspaceState}
+data WorkspaceStateChange = WorkspaceStateChange {lastchange :: WorkspaceChangeType, previous :: WorkspaceState, current :: WorkspaceState}

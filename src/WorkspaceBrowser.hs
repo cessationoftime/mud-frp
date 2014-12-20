@@ -13,7 +13,7 @@
 --
 -----------------------------------------------------------------------------
 
-module WorkspaceBrowser (createWorkspaceBrowser,WorkspaceBrowserOutputs, WorkspaceBrowser(WorkspaceBrowser)) where
+module WorkspaceBrowser (setupWorkspaceBrowser,WorkspaceBrowserOutputs, WorkspaceBrowser(WorkspaceBrowser)) where
 
 import System.Directory
 import System.FilePath
@@ -23,8 +23,7 @@ import Paths (getDataFile)
 import RBWX.RBWX
 import EventInputs
 import Dialogs
-import qualified Reactive.Banana.Frameworks as Frame
-
+import qualified Reactive.Banana.Frameworks as Framew
 
 newtype WorkspaceBrowser = WorkspaceBrowser (Panel ())
 
@@ -62,20 +61,35 @@ layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenW
 
 data WorkspaceBrowserOutputs t = WorkspaceBrowserOutputs Int
 
-createWorkspaceBrowser :: (Frameworks t) => Frame () -> Event t (WorkspaceBrowserChange,FilePath) -> (WorkspaceBrowser -> IO ())  -> Moment t (WorkspaceBrowserOutputs t)
-createWorkspaceBrowser frame1 inp setupIO = do
-    wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject) <- liftIO $ setup frame1
+type WorkspaceCreation t =  Behavior t WorkspaceState -- ^ Input Events for Workspacebrowser
+                         ->  (WorkspaceBrowser -> IO ()) -- ^ Function to Attach the WorkspaceBrowser to Aui, without actually passing AuiManager
+                         ->  Moment t (WorkspaceBrowserOutputs t)
+
+setupWorkspaceBrowser :: (Frameworks t) =>
+  Frame () -> Moment t (Event t FilePath,Event t FilePath,Event t FilePath, WorkspaceCreation t)
+setupWorkspaceBrowser frame1 = do
+    wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject) <- liftIO $ setupGui frame1
+
     eButtonCreateProject  <- event0 buttonCreateProject command
-    eButtonCreateWS  <- event0 buttonCreateWS command
-    eButtonOpenWS <- event0 buttonOpenWS command
-    eCreateWorkspaceOk <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eButtonCreateWS
-    eOpenWorkspaceOk <- fileDialogOkEvent Open "" [Workspace] frame1 eButtonOpenWS
     eCreateProjectOk <- fileDialogOkEvent New "NewProject.n6proj" [Project] frame1 eButtonCreateProject
+
+    eButtonCreateWS  <- event0 buttonCreateWS command
+    eCreateWorkspaceOk <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eButtonCreateWS
+
+    eButtonOpenWS <- event0 buttonOpenWS command
+    eOpenWorkspaceOk <- fileDialogOkEvent Open "" [Workspace] frame1 eButtonOpenWS
+
+    return (eCreateProjectOk,eCreateWorkspaceOk,eOpenWorkspaceOk, wireupWorkspaceBrowser frame1 wbData eCreateProjectOk eCreateWorkspaceOk eOpenWorkspaceOk)
+
+wireupWorkspaceBrowser :: (Frameworks t) =>
+  Frame () -> WorkspaceBrowserData -> Event t FilePath -> Event t FilePath -> Event t FilePath -> WorkspaceCreation t
+wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject) eCreateProjectOk eCreateWorkspaceOk eOpenWorkspaceOk eWorkspaceState setupIO = do
+
     liftIO $ setupIO $ WorkspaceBrowser panel
 
     -- track workspaceData as a behavior, run IO and use output to update the behavior.
   --  let wbInput = WorkspaceBrowserInput eCreateWorkspaceOk eOpenWorkspaceOk eCreateProjectOk
---        inputs =  unite $ wbInput:inp
+--        inputs =  unite $ wbInput:eWorkspaceState
     let loadW  =  loadWorkspace <$> (eCreateWorkspaceOk `union` eOpenWorkspaceOk)
         loadP = loadProject <$> eCreateProjectOk
         loader = loadW `union` loadP
@@ -143,8 +157,8 @@ createWorkspaceFile fp = do
 openWsFile :: FilePath -> IO String
 openWsFile fp = readFile fp
 
-setup ::  Frame () -> IO WorkspaceBrowserData
-setup window1 = do
+setupGui ::  Frame () -> IO WorkspaceBrowserData
+setupGui window1 = do
 
     workspacePanel <- panel window1 []
     windowFreeze workspacePanel

@@ -22,7 +22,7 @@ module RBWX.Banana.WX.Core.Core (
   ,mapIOreaction
   ,mapIOreaction2
   ,mapIOchainreaction
-  ,ioReaction
+  ,ioOnEvent
   ,ioAccumB
   ,ChainIO
   ,wxID_ANY
@@ -39,16 +39,21 @@ import Control.Monad
 import Data.Maybe (isJust, catMaybes)
 import Data.Monoid (Monoid(..))
 
+(<#) :: Frameworks t =>
+  (a -> IO ()) -> Event t a ->  Moment t (Event t a)
+func <# ev = ioOnEvent func ev
+
 -- | perform the IO on the given event, create a new event
-ioReaction :: Frameworks t =>
-   (a -> IO ()) -> Event t a ->  Moment t (Event t a)
-ioReaction func ev = do
+ioOnEvent :: Frameworks t =>
+  (a -> IO ()) -> Event t a ->  Moment t (Event t a)
+ioOnEvent func ev = do
      (adder,handler) <- liftIO newAddHandler
      reactimate $ (\aa -> func aa >> handler aa) <$> ev
      fromAddHandler adder
 
 -- | start with an initial value and combine with incoming events, perform the IO action upon receiving the event. Use the IO output to upade the Behavior.
-ioAccumB :: Frameworks t => a -> Event t (a -> IO a) ->  Moment t (Behavior t a)
+ioAccumB :: Frameworks t =>
+  a -> Event t (a -> IO a) ->  Moment t (Behavior t a)
 ioAccumB acc ev = do
     (eventZ,eventZIn) <- Frame.newEvent
     -- track state as a behavior, run IO function from event and use output to update the behavior.
@@ -85,7 +90,8 @@ mapIOreaction2 inp evFunc = do
     return eventB
 
 -- | perform the IO on the given event, use the output of the IO to create a new event
-mapIOreaction3 :: Frameworks t => Event t (IO b) ->  Moment t (Event t b)
+mapIOreaction3 :: Frameworks t =>
+  Event t (IO b) ->  Moment t (Event t b)
 mapIOreaction3 evFunc = do
     (eventB,eventBInput) <- Frame.newEvent
     let procIO1 = procIO eventBInput

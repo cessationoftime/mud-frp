@@ -127,9 +127,9 @@ outputs notebook frame1 input = do
     let eNew = filterJust $ justNewPage <$> input
         eOpen = filterJust $ justOpenPage <$> input
     eNewFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eNew
-    eNewNotebookPage :: Event t NotebookPage <- (addEmptySourceTab notebook) `ioReaction`  eNewFileDialogNotebookPage
+    eNewNotebookPage :: Event t NotebookPage <- (addEmptySourceTab notebook) `ioOnEvent`  eNewFileDialogNotebookPage
     eOpenFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eOpen
-    eOpenNotebookPage :: Event t NotebookPage <- (addSourcePage notebook) `ioReaction` eOpenFileDialogNotebookPage
+    eOpenNotebookPage :: Event t NotebookPage <- (addSourcePage notebook) `ioOnEvent` eOpenFileDialogNotebookPage
     eCloseEventAuiNoteBook :: Event t EventAuiNotebook <- eCloseNotebookPage notebook
     eClosedEventAuiNoteBook :: Event t EventAuiNotebook <- eClosedNotebookPage notebook
     eChangingEventAuiNoteBook :: Event t EventAuiNotebook <- eChangingNotebookPage notebook
