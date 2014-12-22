@@ -66,14 +66,10 @@ networkDescription = do
     quit  <- menuQuit fileMenu [help := "Quit the ide"]
 
     -- setup workspace browser GUI
-    (eCreateProjectOk,eCreateWorkspaceOk,eOpenWorkspaceOk, wireupWorkspaceBrowser) <- setupWorkspaceBrowser frame1
-
-    let ewbCreateProjectOk = (\fp (WorkspaceState wfp prjs) -> WorkspaceState wfp (fp:prjs)) <$> eCreateProjectOk
-        ewbCreateWorkspaceOk = (\fp (WorkspaceState _ prjs) -> WorkspaceState fp prjs) <$> eCreateWorkspaceOk
-        ewbOpenWorkspaceOk = (\fp (WorkspaceState _ prjs) -> WorkspaceState fp prjs) <$> eOpenWorkspaceOk
+    (eCreateWorkspaceFP,eOpenWorkspaceFP,eCreateProjectFP, wireupWorkspaceBrowser) <- setupWorkspaceBrowser frame1
 
     --represents the current workspace state
-    let bWorkspaceState =  accumB (WorkspaceState "" []) (unions [ewbCreateProjectOk,ewbCreateWorkspaceOk,ewbOpenWorkspaceOk])
+    bWorkspaceState <-  currentWorkspaceSetup eCreateWorkspaceFP eOpenWorkspaceFP eCreateProjectFP
 
 
     -- view the workspace State as it changes

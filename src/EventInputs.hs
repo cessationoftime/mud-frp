@@ -39,7 +39,7 @@ data WorkspaceBrowserChange = WorkspaceStateInit | StateChange WorkspaceState | 
 type Project = FilePath
 data WorkspaceState = WorkspaceState { workspaceFile :: FilePath, projects :: [Project] } deriving (Eq,Show)
 
-data WorkspaceChangeType = OpenWorkspace FilePath | CloseWorkspace | OpenProject FilePath | CloseProject FilePath
+data WorkspaceChangeType = WorkspaceChangeInit | OpenWorkspace FilePath | CloseWorkspace | OpenProject FilePath | CloseProject FilePath
 
 -- | the change that has taken place.  This data should be sent to downstream events.
-data WorkspaceStateChange = WorkspaceStateChange {lastchange :: WorkspaceChangeType, previous :: WorkspaceState, current :: WorkspaceState}
+data WorkspaceStateChange = WorkspaceStateChange {lastchange :: WorkspaceChangeType, current :: WorkspaceState}
