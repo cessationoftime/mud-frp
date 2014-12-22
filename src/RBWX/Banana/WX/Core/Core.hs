@@ -24,6 +24,7 @@ module RBWX.Banana.WX.Core.Core (
   ,mapIOchainreaction
   ,ioOnEvent
   ,ioAccumB
+  ,ioAccumChanges
   ,ChainIO
   ,wxID_ANY
 ) where
@@ -39,9 +40,6 @@ import Control.Monad
 import Data.Maybe (isJust, catMaybes)
 import Data.Monoid (Monoid(..))
 
-(<#) :: Frameworks t =>
-  (a -> IO ()) -> Event t a ->  Moment t (Event t a)
-func <# ev = ioOnEvent func ev
 
 -- | perform the IO on the given event, create a new event
 ioOnEvent :: Frameworks t =>
@@ -49,6 +47,14 @@ ioOnEvent :: Frameworks t =>
 ioOnEvent func ev = do
      (adder,handler) <- liftIO newAddHandler
      reactimate $ (\aa -> func aa >> handler aa) <$> ev
+     fromAddHandler adder
+
+ioOnChanges :: Frameworks t =>
+  (a -> IO ()) -> Behavior t a ->  Moment t (Event t a)
+ioOnChanges func beh = do
+     (adder,handler) <- liftIO newAddHandler
+     changeEvent <- changes beh
+     reactimate' $ (\aa ->  (\bb -> func bb >> handler bb) <$> aa) <$> changeEvent
      fromAddHandler adder
 
 -- | start with an initial value and combine with incoming events, perform the IO action upon receiving the event. Use the IO output to upade the Behavior.
@@ -61,6 +67,20 @@ ioAccumB acc ev = do
         b2 = (\bb ee -> ee bb >>= eventZIn) <$> steppingBehavior
     -- update the behavior with the new state using reactimate and eventZInput
     reactimate $ b2 <@> ev
+
+    return steppingBehavior
+
+-- | start with an initial value and combine with incoming changes, perform the IO action upon receiving the change event. Use the IO output to update the output Behavior.
+ioAccumChanges :: Frameworks t =>
+  a -> Behavior t e -> (e -> a -> IO a) -> Moment t (Behavior t a)
+ioAccumChanges acc beh ioFunc = do
+    (eventZ,eventZIn) <- Frame.newEvent
+    changeEvent <- changes beh
+    -- track state as a behavior, run IO function from event and use output to update the behavior.
+    let steppingBehavior = stepper acc eventZ
+        b2 = (\bb ff -> (\ee ->ioFunc ee bb >>= eventZIn) <$> ff ) <$> steppingBehavior
+    -- update the behavior with the new state using reactimate and eventZInput
+    reactimate' $ b2 <@> changeEvent
 
     return steppingBehavior
 

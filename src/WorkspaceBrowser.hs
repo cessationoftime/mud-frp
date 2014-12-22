@@ -61,7 +61,7 @@ layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenW
 
 data WorkspaceBrowserOutputs t = WorkspaceBrowserOutputs Int
 
-type WorkspaceCreation t =  Behavior t WorkspaceState -- ^ Input Events for Workspacebrowser
+type WorkspaceCreation t =  Behavior t WorkspaceStateChange -- ^ Input Events for Workspacebrowser
                          ->  (WorkspaceBrowser -> IO ()) -- ^ Function to Attach the WorkspaceBrowser to Aui, without actually passing AuiManager
                          ->  Moment t (WorkspaceBrowserOutputs t)
 
@@ -79,21 +79,21 @@ setupWorkspaceBrowser frame1 = do
     eButtonOpenWS <- event0 buttonOpenWS command
     eOpenWorkspaceOk <- fileDialogOkEvent Open "" [Workspace] frame1 eButtonOpenWS
 
-    return (eCreateProjectOk,eCreateWorkspaceOk,eOpenWorkspaceOk, wireupWorkspaceBrowser frame1 wbData eCreateProjectOk eCreateWorkspaceOk eOpenWorkspaceOk)
+    return (eCreateWorkspaceOk,eOpenWorkspaceOk,eCreateProjectOk, wireupWorkspaceBrowser frame1 wbData)
 
 wireupWorkspaceBrowser :: (Frameworks t) =>
-  Frame () -> WorkspaceBrowserData -> Event t FilePath -> Event t FilePath -> Event t FilePath -> WorkspaceCreation t
-wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject) eCreateProjectOk eCreateWorkspaceOk eOpenWorkspaceOk eWorkspaceState setupIO = do
+  Frame () -> WorkspaceBrowserData -> WorkspaceCreation t
+wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject) bWorkspaceState setupIO = do
 
     liftIO $ setupIO $ WorkspaceBrowser panel
 
     -- track workspaceData as a behavior, run IO and use output to update the behavior.
   --  let wbInput = WorkspaceBrowserInput eCreateWorkspaceOk eOpenWorkspaceOk eCreateProjectOk
 --        inputs =  unite $ wbInput:eWorkspaceState
-    let loadW  =  loadWorkspace <$> (eCreateWorkspaceOk `union` eOpenWorkspaceOk)
-        loadP = loadProject <$> eCreateProjectOk
-        loader = loadW `union` loadP
-    workspaceDataBehavior <- ioAccumB wbData loader
+   -- let loadW  =  loadWorkspace <$> (eCreateWorkspaceOk `union` eOpenWorkspaceOk)
+    --    loadP = loadProject <$> eCreateProjectOk
+        --loader = loadW `union` loadP
+    workspaceDataBehavior <- ioAccumChanges wbData bWorkspaceState renderWorkspaceState -- TODO use reactimate'
 
     return (WorkspaceBrowserOutputs 0)
 
@@ -103,11 +103,13 @@ wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS butto
  -- let
  -- do
 
+renderWorkspaceState :: WorkspaceStateChange -> WorkspaceBrowserData ->  IO WorkspaceBrowserData
+renderWorkspaceState s d = return d
 
 loadProject :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
 loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode projNodes) = do
     windowFreeze workspacePanel
-    fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
+  --  fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
 
@@ -128,10 +130,10 @@ loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS 
 loadWorkspace :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
 loadWorkspace fp wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) = do
     windowFreeze workspacePanel
-    fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
-    if fileExists
-       then return ()
-       else createWorkspaceFile fp
+   -- fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
+  --  if fileExists
+   --    then return ()
+  --     else createWorkspaceFile fp
 
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
@@ -146,13 +148,7 @@ loadWorkspace fp wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCrea
     windowThaw workspacePanel
     return newWbData
 
-createProjectFile :: FilePath -> IO ()
-createProjectFile fp = do
-  writeFile fp ""
 
-createWorkspaceFile :: FilePath -> IO ()
-createWorkspaceFile fp = do
-  writeFile fp "[]"
 
 openWsFile :: FilePath -> IO String
 openWsFile fp = readFile fp
