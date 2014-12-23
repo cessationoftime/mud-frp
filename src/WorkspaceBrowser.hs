@@ -93,7 +93,7 @@ wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS butto
    -- let loadW  =  loadWorkspace <$> (eCreateWorkspaceOk `union` eOpenWorkspaceOk)
     --    loadP = loadProject <$> eCreateProjectOk
         --loader = loadW `union` loadP
-    workspaceDataBehavior <- ioAccumChanges wbData bWorkspaceState renderWorkspaceState -- TODO use reactimate'
+    workspaceDataBehavior <- ioAccumChanges wbData bWorkspaceState renderWorkspaceState
 
     return (WorkspaceBrowserOutputs 0)
 
@@ -104,12 +104,18 @@ wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS butto
  -- do
 
 renderWorkspaceState :: WorkspaceStateChange -> WorkspaceBrowserData ->  IO WorkspaceBrowserData
-renderWorkspaceState s d = return d
+renderWorkspaceState (WorkspaceStateChange (OpenWorkspace fp) state) wbData@(Nodeless _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
+  loadWorkspace fp wbData
+renderWorkspaceState (WorkspaceStateChange (OpenProject fp) state) wbData@(Noded _ _ _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
+  loadProject fp wbData
+renderWorkspaceState (WorkspaceStateChange (OpenProject fp) state) (Nodeless _ _ _ _ _ _ ) = error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
+renderWorkspaceState (WorkspaceStateChange (OpenWorkspace _) _) (Noded _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenWorkspace, Noded = should not happen"
+
+
 
 loadProject :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
 loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode projNodes) = do
     windowFreeze workspacePanel
-  --  fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
 
@@ -130,10 +136,6 @@ loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS 
 loadWorkspace :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
 loadWorkspace fp wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) = do
     windowFreeze workspacePanel
-   -- fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
-  --  if fileExists
-   --    then return ()
-  --     else createWorkspaceFile fp
 
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
