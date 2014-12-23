@@ -19,10 +19,13 @@ import Reactive.Banana.Frameworks
 import RBWX.RBWX
 import System.Directory
 import System.FilePath
+import Dialogs
 
-currentWorkspaceSetup :: Frameworks t => Event t FilePath -> Event t FilePath -> Event t FilePath  -> Moment t (Behavior t WorkspaceStateChange)
-currentWorkspaceSetup eCreateWorkspaceFP eOpenWorkspaceFP eCreateProjectFP = do
-
+currentWorkspaceSetup :: Frameworks t => Frame () -> Event t () -> Event t () -> Event t ()  -> Moment t (Behavior t WorkspaceStateChange)
+currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject = do
+  eCreateProjectFP <- fileDialogOkEvent New "NewProject.n6proj" [Project] frame1 eCreateProject
+  eCreateWorkspaceFP <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eCreateWorkspace
+  eOpenWorkspaceFP <- fileDialogOkEvent Open "" [Workspace] frame1 eOpenWorkspace
   eCreateProjectState <- processCreateProjectFP eCreateProjectFP
   eCreateWorkspaceState <- processCreateWorkspaceFP eCreateWorkspaceFP
   let eOpenWorkspaceState  = processOpenWorkspaceFP eOpenWorkspaceFP

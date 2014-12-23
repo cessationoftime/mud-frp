@@ -17,7 +17,6 @@ import Data.List( zip3 )
 import Paths (getDataFile)
 import RBWX.RBWX
 import EventInputs
-import Dialogs
 import qualified Reactive.Banana.Frameworks as Framew
 
 newtype WorkspaceBrowser = WorkspaceBrowser (Panel ())
@@ -66,20 +65,20 @@ type WorkspaceCreation t =  Behavior t WorkspaceStateChange -- ^ Input Events fo
 
 -- | loads the gui and returns output events as well as a curried function to call the second step, wireupWorkspaceBrowser
 setupWorkspaceBrowser :: (Frameworks t) =>
-  Frame () -> Moment t (Event t FilePath,Event t FilePath,Event t FilePath, WorkspaceCreation t)
+  Frame () -> Moment t (Event t (),Event t (),Event t (), WorkspaceCreation t)
 setupWorkspaceBrowser frame1 = do
     wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject) <- liftIO $ setupGui frame1
 
     eButtonCreateProject  <- event0 buttonCreateProject command
-    eCreateProjectOk <- fileDialogOkEvent New "NewProject.n6proj" [Project] frame1 eButtonCreateProject
+
 
     eButtonCreateWS  <- event0 buttonCreateWS command
-    eCreateWorkspaceOk <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eButtonCreateWS
+
 
     eButtonOpenWS <- event0 buttonOpenWS command
-    eOpenWorkspaceOk <- fileDialogOkEvent Open "" [Workspace] frame1 eButtonOpenWS
 
-    return (eCreateWorkspaceOk,eOpenWorkspaceOk,eCreateProjectOk, wireupWorkspaceBrowser frame1 wbData)
+
+    return (eButtonCreateWS,eButtonOpenWS,eButtonCreateProject, wireupWorkspaceBrowser frame1 wbData)
 
 -- | wires up input events, so that the workspace browser will react and render changes to the workspace.
 wireupWorkspaceBrowser :: (Frameworks t) =>

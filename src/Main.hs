@@ -66,10 +66,10 @@ networkDescription = do
     quit  <- menuQuit fileMenu [help := "Quit the ide"]
 
     -- setup workspace browser GUI
-    (eCreateWorkspaceFP,eOpenWorkspaceFP,eCreateProjectFP, wireupWorkspaceBrowser) <- setupWorkspaceBrowser frame1
+    (eCreateWorkspace,eOpenWorkspace,eCreateProject, wireupWorkspaceBrowser) <- setupWorkspaceBrowser frame1
 
     --represents the current workspace state
-    bWorkspaceState <-  currentWorkspaceSetup eCreateWorkspaceFP eOpenWorkspaceFP eCreateProjectFP
+    bWorkspaceState <-  currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject
 
 
     -- view the workspace State as it changes

@@ -34,8 +34,8 @@ data CabalPackage = CabalPackage {
 } deriving Show
 
 
-parse :: FilePath -> IO CabalPackage
-parse file = do
+parseCabalPackage :: FilePath -> IO CabalPackage
+parseCabalPackage file = do
   pkg <- readPackageDescription silent file
   finalPkg <- return $ finalizePD pkg
   return $ Cabal
