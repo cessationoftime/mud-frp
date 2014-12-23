@@ -1,19 +1,14 @@
 {-# LANGUAGE RankNTypes #-}
 -----------------------------------------------------------------------------
 --
--- Module      :  Controls.WorkspaceBrowser
--- Copyright   :
--- License     :  BSD3
---
--- Maintainer  :
--- Stability   :
--- Portability :
---
--- |
+-- Module      :  WorkspaceBrowser
+-- |  This module sets up the workspace browser in two steps, setupWorkspaceBrowser and wireupWorkspaceBrowser.
+-- |  The first step loads the gui and returns output events as well as a curried function to call the second step wireupWorkspaceBrowser.
+-- |  The second step wires up input events, so that the workspace browser will react and render changes to the workspace.
 --
 -----------------------------------------------------------------------------
 
-module WorkspaceBrowser (setupWorkspaceBrowser,WorkspaceBrowserOutputs, WorkspaceBrowser(WorkspaceBrowser)) where
+module WorkspaceBrowser (setupWorkspaceBrowser,WorkspaceBrowser, browserPanel) where
 
 import System.Directory
 import System.FilePath
@@ -27,12 +22,16 @@ import qualified Reactive.Banana.Frameworks as Framew
 
 newtype WorkspaceBrowser = WorkspaceBrowser (Panel ())
 
+browserPanel :: WorkspaceBrowser -> Panel ()
+browserPanel (WorkspaceBrowser p) = p
+
 data WorkspaceBrowserData =
   Nodeless (Frame ()) (Panel ()) (TreeCtrl ())  (Button ()) (Button ()) (Button ()) |
   Noded (Frame ()) (Panel ()) (TreeCtrl ())  (Button ()) (Button ()) (Button ()) (TreeItem) [TreeItem]
 
 data LayoutMode = None | HasWorkspace | HasProject
 
+-- | modify the workspace browser to hide or show components based on the state of the workspace browser
 layoutWhen :: WorkspaceBrowserData -> IO ()
 -- when nothing is open
 layoutWhen (Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) = do
@@ -59,12 +58,13 @@ layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenW
 --workspaceBrowser :: Frameworks t => Window a -> Event t () -> Event t () -> Moment t (WorkspaceBrowser t)
 --workspaceBrowser notebook frame1 eOpen eCreate = do
 
-data WorkspaceBrowserOutputs t = WorkspaceBrowserOutputs Int
+--data WorkspaceBrowserOutputs t = WorkspaceBrowserOutputs Int
 
 type WorkspaceCreation t =  Behavior t WorkspaceStateChange -- ^ Input Events for Workspacebrowser
                          ->  (WorkspaceBrowser -> IO ()) -- ^ Function to Attach the WorkspaceBrowser to Aui, without actually passing AuiManager
-                         ->  Moment t (WorkspaceBrowserOutputs t)
+                         ->  Moment t ()
 
+-- | loads the gui and returns output events as well as a curried function to call the second step, wireupWorkspaceBrowser
 setupWorkspaceBrowser :: (Frameworks t) =>
   Frame () -> Moment t (Event t FilePath,Event t FilePath,Event t FilePath, WorkspaceCreation t)
 setupWorkspaceBrowser frame1 = do
@@ -81,6 +81,7 @@ setupWorkspaceBrowser frame1 = do
 
     return (eCreateWorkspaceOk,eOpenWorkspaceOk,eCreateProjectOk, wireupWorkspaceBrowser frame1 wbData)
 
+-- | wires up input events, so that the workspace browser will react and render changes to the workspace.
 wireupWorkspaceBrowser :: (Frameworks t) =>
   Frame () -> WorkspaceBrowserData -> WorkspaceCreation t
 wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject) bWorkspaceState setupIO = do
@@ -95,7 +96,7 @@ wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS butto
         --loader = loadW `union` loadP
     workspaceDataBehavior <- ioAccumChanges wbData bWorkspaceState renderWorkspaceState
 
-    return (WorkspaceBrowserOutputs 0)
+    return ()
 
 
 --outputs :: (Frameworks t) => WorkspaceBrowserData -> Frame () -> WorkspaceBrowserInput t -> Moment t (WorkspaceBrowserOutputs t)
@@ -104,15 +105,15 @@ wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS butto
  -- do
 
 renderWorkspaceState :: WorkspaceStateChange -> WorkspaceBrowserData ->  IO WorkspaceBrowserData
-renderWorkspaceState (WorkspaceStateChange (OpenWorkspace fp) state) wbData@(Nodeless _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
+renderWorkspaceState (WorkspaceStateChange (OpenWorkspace fp) _) wbData@(Nodeless _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
   loadWorkspace fp wbData
-renderWorkspaceState (WorkspaceStateChange (OpenProject fp) state) wbData@(Noded _ _ _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
+renderWorkspaceState (WorkspaceStateChange (OpenProject fp) _) wbData@(Noded _ _ _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
   loadProject fp wbData
-renderWorkspaceState (WorkspaceStateChange (OpenProject fp) state) (Nodeless _ _ _ _ _ _ ) = error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
+renderWorkspaceState (WorkspaceStateChange (OpenProject fp) _) (Nodeless _ _ _ _ _ _ ) = error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
 renderWorkspaceState (WorkspaceStateChange (OpenWorkspace _) _) (Noded _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenWorkspace, Noded = should not happen"
 
 
-
+-- add project node to browser
 loadProject :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
 loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode projNodes) = do
     windowFreeze workspacePanel
@@ -133,6 +134,7 @@ loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS 
     windowThaw workspacePanel
     return newWbData
 
+-- add workspace node to browser
 loadWorkspace :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
 loadWorkspace fp wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) = do
     windowFreeze workspacePanel

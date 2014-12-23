@@ -88,7 +88,7 @@ networkDescription = do
   --  let addPane b c w =  auiManagerAddPane aui w b c >> return ()
 
     -- finish wiring workspace browser GUI
-    workspaceBrowserOutput <- wireupWorkspaceBrowser bWorkspaceState (\(WorkspaceBrowser p) -> addPane (objectCast p) wxRIGHT "Workspace Browser")
+    _ <- wireupWorkspaceBrowser bWorkspaceState (\wb -> addPane (objectCast $ browserPanel wb) wxRIGHT "Workspace Browser")
 
 
 
