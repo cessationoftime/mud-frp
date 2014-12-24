@@ -25,33 +25,36 @@ browserPanel :: WorkspaceBrowser -> Panel ()
 browserPanel (WorkspaceBrowser p) = p
 
 data WorkspaceBrowserData =
-  Nodeless (Frame ()) (Panel ()) (TreeCtrl ())  (Button ()) (Button ()) (Button ()) |
-  Noded (Frame ()) (Panel ()) (TreeCtrl ())  (Button ()) (Button ()) (Button ()) (TreeItem) [TreeItem]
+  Nodeless (Frame ()) (Panel ()) (TreeCtrl ())  (Button ()) (Button ()) (Button ()) (Button ()) |
+  Noded (Frame ()) (Panel ()) (TreeCtrl ())  (Button ()) (Button ()) (Button ()) (Button ()) (TreeItem) [TreeItem]
 
 data LayoutMode = None | HasWorkspace | HasProject
 
 -- | modify the workspace browser to hide or show components based on the state of the workspace browser
 layoutWhen :: WorkspaceBrowserData -> IO ()
 -- when nothing is open
-layoutWhen (Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) = do
+layoutWhen (Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject) = do
       _ <- windowHide workspaceTree
       _ <- windowHide buttonCreateProject
+      _ <- windowHide buttonImportProject
       _ <- windowShow buttonCreateWS
       _ <- windowShow buttonOpenWS
       set workspacePanel [ layout := fill $ column 2 [ widget buttonOpenWS, widget buttonCreateWS ] ]
 -- when only workspace is open, no projects
-layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode []) = do
+layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode []) = do
       _ <- windowShow workspaceTree
       _ <- windowShow buttonCreateProject
+      _ <- windowShow buttonImportProject
       _ <- windowHide buttonCreateWS
       _ <- windowHide buttonOpenWS
-      set workspacePanel [ layout := fill $ row 2 [widget workspaceTree, widget buttonCreateProject ] ]
+      set workspacePanel [ layout := fill $ row 2 [widget workspaceTree, widget buttonCreateProject, widget buttonImportProject ] ]
 -- when one or more projects are open
-layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode projNodes) = do
+layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode projNodes) = do
       _ <- windowShow workspaceTree
       _ <- windowHide buttonCreateProject
       _ <- windowHide buttonCreateWS
       _ <- windowHide buttonOpenWS
+      _ <- windowHide buttonImportProject
       set workspacePanel [ layout := fill $ widget workspaceTree ]
 
 --workspaceBrowser :: Frameworks t => Window a -> Event t () -> Event t () -> Moment t (WorkspaceBrowser t)
@@ -63,13 +66,16 @@ type WorkspaceCreation t =  Behavior t WorkspaceStateChange -- ^ Input Events fo
                          ->  (WorkspaceBrowser -> IO ()) -- ^ Function to Attach the WorkspaceBrowser to Aui, without actually passing AuiManager
                          ->  Moment t ()
 
+
 -- | loads the gui and returns output events as well as a curried function to call the second step, wireupWorkspaceBrowser
 setupWorkspaceBrowser :: (Frameworks t) =>
-  Frame () -> Moment t (Event t (),Event t (),Event t (), WorkspaceCreation t)
+  Frame () -> Moment t (Event t (),Event t (),Event t (), Event t (), WorkspaceCreation t)
 setupWorkspaceBrowser frame1 = do
-    wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject) <- liftIO $ setupGui frame1
+    wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject) <- liftIO $ setupGui frame1
 
     eButtonCreateProject  <- event0 buttonCreateProject command
+
+    eButtonImportProject  <- event0 buttonImportProject command
 
 
     eButtonCreateWS  <- event0 buttonCreateWS command
@@ -78,12 +84,12 @@ setupWorkspaceBrowser frame1 = do
     eButtonOpenWS <- event0 buttonOpenWS command
 
 
-    return (eButtonCreateWS,eButtonOpenWS,eButtonCreateProject, wireupWorkspaceBrowser frame1 wbData)
+    return (eButtonCreateWS,eButtonOpenWS,eButtonCreateProject,eButtonImportProject, wireupWorkspaceBrowser frame1 wbData)
 
 -- | wires up input events, so that the workspace browser will react and render changes to the workspace.
 wireupWorkspaceBrowser :: (Frameworks t) =>
   Frame () -> WorkspaceBrowserData -> WorkspaceCreation t
-wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject) bWorkspaceState setupIO = do
+wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject) bWorkspaceState setupIO = do
 
     liftIO $ setupIO $ WorkspaceBrowser panel
 
@@ -104,17 +110,17 @@ wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS butto
  -- do
 
 renderWorkspaceState :: WorkspaceStateChange -> WorkspaceBrowserData ->  IO WorkspaceBrowserData
-renderWorkspaceState (WorkspaceStateChange (OpenWorkspace fp) _) wbData@(Nodeless _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
+renderWorkspaceState (WorkspaceStateChange (OpenWorkspace fp) _) wbData@(Nodeless _ _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
   loadWorkspace fp wbData
-renderWorkspaceState (WorkspaceStateChange (OpenProject fp) _) wbData@(Noded _ _ _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
+renderWorkspaceState (WorkspaceStateChange (OpenProject fp) _) wbData@(Noded _ _ _ _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
   loadProject fp wbData
-renderWorkspaceState (WorkspaceStateChange (OpenProject fp) _) (Nodeless _ _ _ _ _ _ ) = error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
-renderWorkspaceState (WorkspaceStateChange (OpenWorkspace _) _) (Noded _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenWorkspace, Noded = should not happen"
+renderWorkspaceState (WorkspaceStateChange (OpenProject fp) _) (Nodeless _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
+renderWorkspaceState (WorkspaceStateChange (OpenWorkspace _) _) (Noded _ _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenWorkspace, Noded = should not happen"
 
 
 -- add project node to browser
 loadProject :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
-loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode projNodes) = do
+loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode projNodes) = do
     windowFreeze workspacePanel
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
@@ -127,7 +133,7 @@ loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS 
     treeCtrlAddSubDirs workspaceTree wsNode
     --treeCtrlExpandAllChildren workspaceTree root
 
-    let newWbData = Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject wsNode (newProjNode:projNodes)
+    let newWbData = Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode (newProjNode:projNodes)
     layoutWhen newWbData
     _ <- windowLayout frame1 -- need to run this or the workspaceTree can appear tiny and in the wrong location
     windowThaw workspacePanel
@@ -135,7 +141,7 @@ loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS 
 
 -- add workspace node to browser
 loadWorkspace :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
-loadWorkspace fp wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject) = do
+loadWorkspace fp wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject) = do
     windowFreeze workspacePanel
 
     let baseName = takeBaseName fp
@@ -145,7 +151,7 @@ loadWorkspace fp wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCrea
 
     treeCtrlSetItemPath workspaceTree workspaceNode ""
 
-    let newWbData = Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject workspaceNode []
+    let newWbData = Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject workspaceNode []
     layoutWhen newWbData
     _ <- windowLayout frame1 -- need to run this or the workspaceTree can appear tiny and in the wrong location
     windowThaw workspacePanel
@@ -165,6 +171,7 @@ setupGui window1 = do
     openWorkspaceButton <- button workspacePanel [text := "Open Workspace"]
     createWorkspaceButton <- button workspacePanel [text := "Create Workspace"]
     createProjectButton <- button workspacePanel [text := "Create Project"]
+    importProjectButton <- button workspacePanel [text := "Import Project from Cabal file"] -- eventually this should be Cabal or Nix project
 
 
     --TODO: embed the buttons in the workspace browser.
@@ -179,7 +186,7 @@ setupGui window1 = do
 
     treeCtrlAssignImageList workspaceTree images  {- 'assign' deletes the imagelist on delete -}
 
-    let wbData = Nodeless window1 workspacePanel workspaceTree createWorkspaceButton openWorkspaceButton createProjectButton
+    let wbData = Nodeless window1 workspacePanel workspaceTree createWorkspaceButton openWorkspaceButton createProjectButton importProjectButton
     layoutWhen wbData
 
     windowThaw workspacePanel
