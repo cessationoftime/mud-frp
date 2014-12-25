@@ -24,12 +24,14 @@ import Dialogs
 currentWorkspaceSetup :: Frameworks t => Frame () -> Event t () -> Event t () -> Event t () -> Event t () -> Moment t (Behavior t WorkspaceStateChange)
 currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImportProject = do
   eCreateProjectFP <- fileDialogOkEvent New "NewProject.n6proj" [Project] frame1 eCreateProject
+  eImportProjectFP <- fileDialogOkEvent New "ImportedProject.n6proj" [Project] frame1 eImportProject
   eCreateWorkspaceFP <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eCreateWorkspace
   eOpenWorkspaceFP <- fileDialogOkEvent Open "" [Workspace] frame1 eOpenWorkspace
   eCreateProjectState <- processCreateProjectFP eCreateProjectFP
   eCreateWorkspaceState <- processCreateWorkspaceFP eCreateWorkspaceFP
+  eImportProjectState <- processImportProjectFP eImportProjectFP
   let eOpenWorkspaceState  = processOpenWorkspaceFP eOpenWorkspaceFP
-  return $ accumB (WorkspaceStateChange WorkspaceChangeInit $ WorkspaceState "" []) (unions [eCreateProjectState,eCreateWorkspaceState,eOpenWorkspaceState])
+  return $ accumB (WorkspaceStateChange WorkspaceChangeInit $ WorkspaceState "" []) (unions [eCreateProjectState,eImportProjectState, eCreateWorkspaceState,eOpenWorkspaceState])
 
   where
   processCreateWorkspaceFP :: Frameworks t =>
@@ -48,7 +50,16 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
   processCreateProjectFP eCreateProjectOk = do
     eCreated <- performCreate `ioOnEvent` eCreateProjectOk
     return $ (\fp (WorkspaceStateChange _ (WorkspaceState wfp prjs)) -> WorkspaceStateChange (OpenProject fp) $ WorkspaceState wfp (fp:prjs)) <$> eCreated
+    where performCreate = createIfNotExist $ newProjectFile ""
+
+  processImportProjectFP :: Frameworks t =>
+    Event t FilePath ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
+  processImportProjectFP eImportProjectOk = do
+    eCreated <- performCreate `ioOnEvent` eImportProjectOk
+    return $ (\fp (WorkspaceStateChange _ (WorkspaceState wfp prjs)) -> WorkspaceStateChange (OpenProject fp) $ WorkspaceState wfp (fp:prjs)) <$> eCreated
     where performCreate = createIfNotExist newProjectFile
+
+
 
 createIfNotExist :: (FilePath -> IO ()) -> FilePath -> IO ()
 createIfNotExist newFileFunc fp = do
@@ -57,9 +68,9 @@ createIfNotExist newFileFunc fp = do
               then return ()
               else newFileFunc fp
 
-newProjectFile :: FilePath -> IO ()
-newProjectFile fp = do
-  writeFile fp ""
+newProjectFile :: FilePath -> String -> IO ()
+newProjectFile fp contents = do
+  writeFile fp contents
 
 newWorkspaceFile :: FilePath -> IO ()
 newWorkspaceFile fp = do

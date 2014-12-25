@@ -92,3 +92,6 @@ descriptor fd = (show fd,fileExtensions fd)
 fileDialogOkEvent :: Frameworks t => DialogOpenMode -> String -> [DialogDescriptor] -> Window a -> Event t b -> Moment t (Event t FilePath)
 fileDialogOkEvent fileMode fileName = fileDialogOkEventEx (show (fileMode :: DialogOpenMode)) fileMode fileName
 
+fileDialogOkEvent' :: Frameworks t => DialogOpenMode -> String -> [DialogDescriptor] -> Window a -> Event t b -> Moment t (Event t FilePath)
+fileDialogOkEvent' fileMode fileName = fileDialogOkEventEx (show (fileMode :: DialogOpenMode)) fileMode fileName
+

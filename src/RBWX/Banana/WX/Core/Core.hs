@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  OutputIsInput
@@ -150,13 +151,22 @@ mapIOreactionAB evFunc = do
       eventBInput va
 -}
 type ChainIO a = (a -> IO ()) -> IO ()
--- | perform IO on the given event, allow the IO to trigger a new event
+-- | perform IO on the given event, allow the IO to trigger a new event.
 mapIOchainreaction :: Frameworks t =>
    ChainIO a -> Event t b -> Moment t (Event t a)
 mapIOchainreaction func ev = do
-    (adder,handler) <- liftIO newAddHandler
+    (adder,handler) <- Frame.newEvent
     reactimate $ (func  handler) <$ ev
-    fromAddHandler adder
+    return adder
+
+type ChainIO2 a b = (a -> IO ()) -> b  -> IO ()
+-- | perform IO on the given event, allow the IO to trigger a new event
+mapIOchainreaction' :: Frameworks t => forall a b.
+   ChainIO2 (a,b) b -> Event t b -> Moment t (Event t (a, b))
+mapIOchainreaction' chainfunc ev = do
+    (event,handler) :: (Event t (a,b), Handler (a, b))  <- Frame.newEvent
+    reactimate $ (chainfunc  handler) <$> ev
+    return event
 
 
 -- from defs.h
