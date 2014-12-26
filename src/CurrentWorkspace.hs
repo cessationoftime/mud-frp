@@ -66,10 +66,10 @@ createIfNotExist newFileFunc fp = do
             fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
             if fileExists
               then return ()
-              else newFileFunc fp
+			  else newFileFunc fp
 
 newProjectFile :: String -> FilePath -> IO ()
-newProjectFile fp contents = do
+newProjectFile contents fp = do
   writeFile fp contents
 
 newWorkspaceFile :: FilePath -> IO ()
