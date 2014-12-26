@@ -50,14 +50,14 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
   processCreateProjectFP eCreateProjectOk = do
     eCreated <- performCreate `ioOnEvent` eCreateProjectOk
     return $ (\fp (WorkspaceStateChange _ (WorkspaceState wfp prjs)) -> WorkspaceStateChange (OpenProject fp) $ WorkspaceState wfp (fp:prjs)) <$> eCreated
-    where performCreate = createIfNotExist $ newProjectFile ""
+    where performCreate = createIfNotExist $ newProjectFile "d"
 
   processImportProjectFP :: Frameworks t =>
     Event t FilePath ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processImportProjectFP eImportProjectOk = do
     eCreated <- performCreate `ioOnEvent` eImportProjectOk
     return $ (\fp (WorkspaceStateChange _ (WorkspaceState wfp prjs)) -> WorkspaceStateChange (OpenProject fp) $ WorkspaceState wfp (fp:prjs)) <$> eCreated
-    where performCreate = createIfNotExist newProjectFile
+    where performCreate = createIfNotExist $ newProjectFile "f"
 
 
 
@@ -68,7 +68,7 @@ createIfNotExist newFileFunc fp = do
               then return ()
               else newFileFunc fp
 
-newProjectFile :: FilePath -> String -> IO ()
+newProjectFile :: String -> FilePath -> IO ()
 newProjectFile fp contents = do
   writeFile fp contents
 
