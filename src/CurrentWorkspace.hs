@@ -24,7 +24,10 @@ import Dialogs
 currentWorkspaceSetup :: Frameworks t => Frame () -> Event t () -> Event t () -> Event t () -> Event t () -> Moment t (Behavior t WorkspaceStateChange)
 currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImportProject = do
   eCreateProjectFP <- fileDialogOkEvent New "NewProject.n6proj" [Project] frame1 eCreateProject
+  
   eImportProjectFP <- fileDialogOkEvent New "ImportedProject.n6proj" [Project] frame1 eImportProject
+  eImportProjectFP <- fileDialogOkEventEx New "ImportedProject.n6proj" [Project] frame1 eImportProjectFP
+  
   eCreateWorkspaceFP <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eCreateWorkspace
   eOpenWorkspaceFP <- fileDialogOkEvent Open "" [Workspace] frame1 eOpenWorkspace
   eCreateProjectState <- processCreateProjectFP eCreateProjectFP
@@ -37,9 +40,10 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
   processCreateWorkspaceFP :: Frameworks t =>
     Event t FilePath ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processCreateWorkspaceFP eCreateWorkspaceOk = do
-    eCreated <- performCreate `ioOnEvent` eCreateWorkspaceOk
-    return $ (\fp (WorkspaceStateChange _ (WorkspaceState _ prjs)) -> WorkspaceStateChange (OpenWorkspace fp) $ WorkspaceState fp prjs) <$> eCreated
-    where performCreate = createIfNotExist newWorkspaceFile
+    let eCreateProjectContentOk = ("",) <$> eCreateProjectOk
+    eCreated <- (createIfNotExist newWorkspaceFile) `ioOnEvent` eCreateProjectContentOk
+    let eCreated2 = snd <$> eCreated
+    return $ (\fp (WorkspaceStateChange _ (WorkspaceState _ prjs)) -> WorkspaceStateChange (OpenWorkspace fp) $ WorkspaceState fp prjs) <$> eCreated2
 
   processOpenWorkspaceFP :: Event t FilePath -> Event t (WorkspaceStateChange -> WorkspaceStateChange)
   processOpenWorkspaceFP eOpenWorkspaceFP =
@@ -48,30 +52,31 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
   processCreateProjectFP :: Frameworks t =>
     Event t FilePath ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processCreateProjectFP eCreateProjectOk = do
-    eCreated <- performCreate `ioOnEvent` eCreateProjectOk
-    return $ (\fp (WorkspaceStateChange _ (WorkspaceState wfp prjs)) -> WorkspaceStateChange (OpenProject fp) $ WorkspaceState wfp (fp:prjs)) <$> eCreated
-    where performCreate = createIfNotExist $ newProjectFile "d"
+    let eCreateProjectContentOk = ("",) <$> eCreateProjectOk
+    eCreated <- (createIfNotExist newProjectFile) `ioOnEvent` eCreateProjectContentOk
+    let eCreated2 = snd <$> eCreated
+    return $ (\fp (WorkspaceStateChange _ (WorkspaceState wfp prjs)) -> WorkspaceStateChange (OpenProject fp) $ WorkspaceState wfp (fp:prjs)) <$> eCreated2
 
   processImportProjectFP :: Frameworks t =>
-    Event t FilePath ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
+    Event t (FilePath,FilePath) ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processImportProjectFP eImportProjectOk = do
-    eCreated <- performCreate `ioOnEvent` eImportProjectOk
-    return $ (\fp (WorkspaceStateChange _ (WorkspaceState wfp prjs)) -> WorkspaceStateChange (OpenProject fp) $ WorkspaceState wfp (fp:prjs)) <$> eCreated
-    where performCreate = createIfNotExist $ newProjectFile "f"
+    eCreated <- (createIfNotExist newProjectFile) `ioOnEvent` eImportProjectOk
+    let eCreated2 = snd <$> eCreated
+    return $ (\fp (WorkspaceStateChange _ (WorkspaceState wfp prjs)) -> WorkspaceStateChange (OpenProject fp) $ WorkspaceState wfp (fp:prjs)) <$> eCreated2
 
 
 
-createIfNotExist :: (FilePath -> IO ()) -> FilePath -> IO ()
-createIfNotExist newFileFunc fp = do
+createIfNotExist :: ((String, FilePath) -> IO ()) -> (String, FilePath) -> IO ()
+createIfNotExist newFileFunc (c,fp) = do
             fileExists <- doesFileExist fp -- if file doesn't exist then assume we are trying to create it
             if fileExists
               then return ()
-			  else newFileFunc fp
+	      else newFileFunc (c,fp)
 
-newProjectFile :: String -> FilePath -> IO ()
-newProjectFile contents fp = do
+newProjectFile :: (String, FilePath) -> IO ()
+newProjectFile (contents,fp) = do
   writeFile fp contents
 
-newWorkspaceFile :: FilePath -> IO ()
-newWorkspaceFile fp = do
+newWorkspaceFile :: (String, FilePath) -> IO ()
+newWorkspaceFile (_,fp) = do
   writeFile fp "[]"

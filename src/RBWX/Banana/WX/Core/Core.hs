@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+
 -----------------------------------------------------------------------------
 --
 -- Module      :  OutputIsInput
@@ -23,6 +23,7 @@ module RBWX.Banana.WX.Core.Core (
   ,mapIOreaction
   ,mapIOreaction2
   ,mapIOchainreaction
+  ,mapIOchainreaction2
   ,ioOnEvent
   ,ioAccumB
   ,ioAccumChanges
@@ -150,6 +151,7 @@ mapIOreactionAB evFunc = do
       va <- eventFunc inp
       eventBInput va
 -}
+
 type ChainIO a = (a -> IO ()) -> IO ()
 -- | perform IO on the given event, allow the IO to trigger a new event.
 mapIOchainreaction :: Frameworks t =>
@@ -159,16 +161,18 @@ mapIOchainreaction func ev = do
     reactimate $ (func  handler) <$ ev
     return adder
 
-type ChainIO2 a b = (a -> IO ()) -> b  -> IO ()
--- | perform IO on the given event, allow the IO to trigger a new event
-mapIOchainreaction' :: Frameworks t => forall a b.
-   ChainIO2 (a,b) b -> Event t b -> Moment t (Event t (a, b))
-mapIOchainreaction' chainfunc ev = do
+-- | perform IO on the given event, allow the IO to trigger a new event. Pass the value of the triggering event to the output event 
+mapIOchainreaction2 :: Frameworks t => forall a b.
+   ChainIO b -> Event t a -> Moment t (Event t (a, b))
+mapIOchainreaction2 chainfunc ev = do
     (event,handler) :: (Event t (a,b), Handler (a, b))  <- Frame.newEvent
-    reactimate $ (chainfunc  handler) <$> ev
+    -- the chainfunction will call the handler to trigger the new event
+    reactimate $ (\evb ->
+        let handler2 = (\aaa -> handler (evb,aaa))
+        in chainfunc handler2
+      ) <$> ev
     return event
-
-
+    
 -- from defs.h
 wxID_ANY :: Int
 wxID_ANY = -1

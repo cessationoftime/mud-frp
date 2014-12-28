@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+
 -----------------------------------------------------------------------------
 --
 -- Module      :  Dialogs
@@ -13,9 +13,9 @@
 --
 -----------------------------------------------------------------------------
 
-module Dialogs (fileDialogOkEvent, DialogDescriptor(..), DialogOpenMode(..)) where
+module Dialogs (fileDialogOkEvent,fileDialogOkEventEx, DialogDescriptor(..), DialogOpenMode(..)) where
 import RBWX.RBWX
-
+import Data.Maybe
 
 fileDialog1 :: DialogOpenMode -> String -> [(String,[String])] -> FilePath -> FilePath -> Window a -> ChainIO DialogResult
 fileDialog1 dialogOpenMode message wildcards directory filename parent result
@@ -26,34 +26,50 @@ fileDialog1 dialogOpenMode message wildcards directory filename parent result
 type DialogResult = (FileDialog (), Int)
 
 -- |trigger opening the fileDialog on the given event and create a new DialogResult event.
-eventDialogResult :: Frameworks t => ChainIO DialogResult -> Event t b -> Moment t (Event t DialogResult)
-eventDialogResult showDialog ev = showDialog `mapIOchainreaction` ev
+eventDialogResult :: Frameworks t => ChainIO DialogResult -> Event t b -> Moment t (Event t (b,DialogResult))
+eventDialogResult showDialog ev = showDialog `mapIOchainreaction2` ev
 
 
 -- |used to create events representing specific button presses in dialogs using the wxID constants. Ex: eventDialogOk, eventDialogCancel
-eventDialogButtonClick :: Int ->  Event t DialogResult ->  Event t (FileDialog ())
-eventDialogButtonClick wxId eDialogFinish  = fst `fmap` eClick
-   where eClick = filterE (\(_,r) -> r == wxId) eDialogFinish
+dialogButtonClick :: Int ->  DialogResult -> Maybe (FileDialog ())
+dialogButtonClick wxId (fd,r) | r == wxId  = Just fd
+dialogButtonClick _ _ = Nothing
+
 
 -- |filter the eventDialogResult into an OK-button-only result
-eventDialogOk :: Event t DialogResult ->  Event t (FileDialog ())
-eventDialogOk = eventDialogButtonClick wxID_OK
+dialogOk :: DialogResult ->  Maybe (FileDialog ())
+dialogOk = dialogButtonClick wxID_OK
 
 -- |filter the eventDialogResult into a cancel-button-only result
-eventDialogCancel :: Event t DialogResult ->  Event t (FileDialog ())
-eventDialogCancel = eventDialogButtonClick wxID_CANCEL
+dialogCancel :: DialogResult ->  Maybe (FileDialog ())
+dialogCancel = dialogButtonClick wxID_CANCEL
 
 -- |filter the eventDialogResult into an OK-button-only result, and get the resulting FilePath
 eventDialogOkFilePath :: Frameworks t => Event t DialogResult ->  Moment t (Event t FilePath)
-eventDialogOkFilePath eDialogFinish = fileDialogGetPath `mapIOreaction` (eventDialogOk eDialogFinish)
+eventDialogOkFilePath eDialogFinish = fileDialogGetPath `mapIOreaction` (filterJust $ dialogOk <$> eDialogFinish)
+
+dialogOkFilePath :: DialogResult ->  IO (Maybe FilePath)
+dialogOkFilePath dr = do
+  let maybeFD = dialogOk dr
+  fp <- case maybeFD of Just fd -> fileDialogGetPath fd
+                        Nothing -> return ""
+  return $ if fp == "" then Nothing else Just fp
+
+eventDialogOkFilePath2 :: Frameworks t => Event t (b,DialogResult) ->  Moment t (Event t (Maybe (b,FilePath)))
+eventDialogOkFilePath2 eDialogFinish = (\(x,dr) -> do
+  mbFp <- dialogOkFilePath dr
+  let mbtup = (\fp -> (x,fp)) <$> mbFp
+  return mbtup ) `mapIOreaction` eDialogFinish
+
+  --fileDialogGetPath `mapIOreaction` (filterJust $ dialogOk <$> eDialogFinish)
 
 -- | setup the eventNetwork to show an openFileDialog in the given Window when the given event is received. And load the file into the sourceControl
-fileDialogOkEventEx :: Frameworks t => String -> DialogOpenMode -> String -> [DialogDescriptor] -> Window a -> Event t b -> Moment t (Event t FilePath)
-fileDialogOkEventEx title fileMode fileName fileDescs frame1 event = do
+eventFileDialogOk :: Frameworks t => String -> DialogOpenMode -> String -> [DialogDescriptor] -> Window a -> Event t b -> Moment t (Event t (b,FilePath))
+eventFileDialogOk title fileMode fileName fileDescs frame1 event = do
   let openFileDialog = fileDialog1 fileMode title (descriptor <$> fileDescs) "" fileName frame1
-  eGetDialogFinish <- eventDialogResult openFileDialog event
-  eGetDialogOkFilePath  <- eventDialogOkFilePath eGetDialogFinish
-  return eGetDialogOkFilePath
+  eGetDialogFinish :: Event t (b,DialogResult)  <- eventDialogResult openFileDialog event
+  eGetDialogOkFilePath  <- eventDialogOkFilePath2 eGetDialogFinish
+  return $ filterJust eGetDialogOkFilePath
 
 data DialogOpenMode = New | Open
 
@@ -89,9 +105,10 @@ fileExtensions Cabal = ["*.cabal"]
 descriptor :: DialogDescriptor -> (String,[String])
 descriptor fd = (show fd,fileExtensions fd)
 
+fileDialogOkEventEx :: Frameworks t => DialogOpenMode -> String -> [DialogDescriptor] -> Window a -> Event t b -> Moment t (Event t (b,FilePath))
+fileDialogOkEventEx fileMode fileName = eventFileDialogOk (show (fileMode :: DialogOpenMode)) fileMode fileName
+
 fileDialogOkEvent :: Frameworks t => DialogOpenMode -> String -> [DialogDescriptor] -> Window a -> Event t b -> Moment t (Event t FilePath)
-fileDialogOkEvent fileMode fileName = fileDialogOkEventEx (show (fileMode :: DialogOpenMode)) fileMode fileName
-
-fileDialogOkEvent' :: Frameworks t => DialogOpenMode -> String -> [DialogDescriptor] -> Window a -> Event t b -> Moment t (Event t FilePath)
-fileDialogOkEvent' fileMode fileName = fileDialogOkEventEx (show (fileMode :: DialogOpenMode)) fileMode fileName
-
+fileDialogOkEvent fileMode fileName dd w evb = do
+ eve <- eventFileDialogOk (show (fileMode :: DialogOpenMode)) fileMode fileName dd w evb
+ return $ snd <$> eve 
