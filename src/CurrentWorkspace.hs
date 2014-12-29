@@ -26,7 +26,7 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
   eCreateProjectFP <- fileDialogOkEvent New "NewProject.n6proj" [Project] frame1 eCreateProject
   
   eImportProjectFP <- fileDialogOkEvent New "ImportedProject.n6proj" [Project] frame1 eImportProject
-  eImportProjectFP <- fileDialogOkEventEx New "ImportedProject.n6proj" [Project] frame1 eImportProjectFP
+  eImportProjectFP <- fileDialogOkEventEx Open "ImportedCabal.cabal" [Cabal] frame1 eImportProjectFP
   
   eCreateWorkspaceFP <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eCreateWorkspace
   eOpenWorkspaceFP <- fileDialogOkEvent Open "" [Workspace] frame1 eOpenWorkspace
@@ -40,8 +40,8 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
   processCreateWorkspaceFP :: Frameworks t =>
     Event t FilePath ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processCreateWorkspaceFP eCreateWorkspaceOk = do
-    let eCreateProjectContentOk = ("",) <$> eCreateProjectOk
-    eCreated <- (createIfNotExist newWorkspaceFile) `ioOnEvent` eCreateProjectContentOk
+    let eCreateWorkspaceContentOk = ("",) <$> eCreateWorkspaceOk
+    eCreated <- (createIfNotExist newWorkspaceFile) `ioOnEvent` eCreateWorkspaceContentOk
     let eCreated2 = snd <$> eCreated
     return $ (\fp (WorkspaceStateChange _ (WorkspaceState _ prjs)) -> WorkspaceStateChange (OpenWorkspace fp) $ WorkspaceState fp prjs) <$> eCreated2
 
