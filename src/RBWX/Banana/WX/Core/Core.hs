@@ -27,6 +27,7 @@ module RBWX.Banana.WX.Core.Core (
   ,ioOnEvent
   ,ioAccumB
   ,ioAccumChanges
+  ,ioOnChanges
   ,ChainIO
   ,wxID_ANY
 ) where
