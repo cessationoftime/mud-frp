@@ -60,8 +60,6 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
     return $ (\(c,fp) (WorkspaceStateChange _ (WorkspaceState wfp prjs)) -> WorkspaceStateChange (OpenProject fp) $ WorkspaceState wfp ((fp,c):prjs)) <$> eCreateProjectOk
 
   writeOnChanges :: WorkspaceStateChange -> IO ()
-  writeOnChanges (WorkspaceStateChange (OpenProject _) ws@(WorkspaceState _ prjs)) = return ()
-  writeOnChanges (WorkspaceStateChange (OpenWorkspace _) ws@(WorkspaceState _ prjs)) = return ()
   writeOnChanges (WorkspaceStateChange _ ws@(WorkspaceState _ prjs)) = newWorkspaceFile ws >> writeProjects prjs
 
 {-
@@ -81,7 +79,7 @@ createIfNotExist newFileFunc (c,fp) = do
 	      else newFileFunc (c,fp)
 
 writeProjects :: [Project] -> IO ()
-writeProjects prjs = sequence $ newProjectFile <$> prjs
+writeProjects prjs = sequence_ $ newProjectFile <$> prjs
 
 newProjectFile :: Project -> IO ()
 newProjectFile (fp,contents) = do
@@ -89,4 +87,4 @@ newProjectFile (fp,contents) = do
 
 newWorkspaceFile :: WorkspaceState -> IO ()
 newWorkspaceFile (WorkspaceState fp projects) = do
-  writeFile fp (show projects)
+  writeFile fp (show $ fst <$> projects)
