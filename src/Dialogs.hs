@@ -16,6 +16,10 @@
 module Dialogs (fileDialogOkEvent,fileDialogOkEventEx, DialogDescriptor(..), DialogOpenMode(..)) where
 import RBWX.RBWX
 import Data.Maybe
+import Control.Monad.Trans.Maybe
+import Control.Monad
+import Control.Monad.Trans.Class
+import Utility
 
 fileDialog1 :: DialogOpenMode -> String -> [(String,[String])] -> FilePath -> FilePath -> Window a -> ChainIO DialogResult
 fileDialog1 dialogOpenMode message wildcards directory filename parent result
@@ -48,12 +52,16 @@ dialogCancel = dialogButtonClick wxID_CANCEL
 eventDialogOkFilePath :: Frameworks t => Event t DialogResult ->  Moment t (Event t FilePath)
 eventDialogOkFilePath eDialogFinish = fileDialogGetPath `mapIOreaction` (filterJust $ dialogOk <$> eDialogFinish)
 
+
 dialogOkFilePath :: DialogResult ->  IO (Maybe FilePath)
-dialogOkFilePath dr = do
-  let maybeFD = dialogOk dr
-  fp <- case maybeFD of Just fd -> fileDialogGetPath fd
-                        Nothing -> return ""
-  return $ if fp == "" then Nothing else Just fp
+dialogOkFilePath = runMaybeT . maybeIOPath
+  where
+  maybeIOPath :: DialogResult -> MaybeT IO (FilePath)
+  maybeIOPath dr = do
+    fd <- liftMaybe $ dialogOk dr
+    path <- liftIO $ fileDialogGetPath fd
+    return path
+
 
 eventDialogOkFilePath2 :: Frameworks t => Event t (b,DialogResult) ->  Moment t (Event t (Maybe (b,FilePath)))
 eventDialogOkFilePath2 eDialogFinish = (\(x,dr) -> do

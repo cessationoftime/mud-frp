@@ -24,15 +24,16 @@ import Dialogs
 currentWorkspaceSetup :: Frameworks t => Frame () -> Event t () -> Event t () -> Event t () -> Event t () -> Moment t (Behavior t WorkspaceStateChange)
 currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImportProject = do
   eCreateProjectFP <- fileDialogOkEvent New "NewProject.n6proj" [Project] frame1 eCreateProject
-  
-  eImportProjectFP <- fileDialogOkEvent New "ImportedProject.n6proj" [Project] frame1 eImportProject
-  eImportProjectFP <- fileDialogOkEventEx Open "ImportedCabal.cabal" [Cabal] frame1 eImportProjectFP
+
+  eImportProjectFP <- fileDialogOkEvent Open "ImportedCabal.cabal" [Cabal] frame1 eImportProject
+  eImportProjectFP2 <- fileDialogOkEventEx New "ImportedProject.n6proj" [Project] frame1 eImportProjectFP
+
   
   eCreateWorkspaceFP <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eCreateWorkspace
   eOpenWorkspaceFP <- fileDialogOkEvent Open "" [Workspace] frame1 eOpenWorkspace
   eCreateProjectState <- processCreateProjectFP eCreateProjectFP
   eCreateWorkspaceState <- processCreateWorkspaceFP eCreateWorkspaceFP
-  eImportProjectState <- processImportProjectFP eImportProjectFP
+  eImportProjectState <- processImportProjectFP eImportProjectFP2
   let eOpenWorkspaceState  = processOpenWorkspaceFP eOpenWorkspaceFP
   return $ accumB (WorkspaceStateChange WorkspaceChangeInit $ WorkspaceState "" []) (unions [eCreateProjectState,eImportProjectState, eCreateWorkspaceState,eOpenWorkspaceState])
 

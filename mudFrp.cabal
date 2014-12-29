@@ -27,8 +27,8 @@ executable mudFrp
     default-language: Haskell2010
     default-extensions: ScopedTypeVariables TupleSections ViewPatterns
     hs-source-dirs: src
-    other-modules: CabalParsing CurrentWorkspace AuiManager EventInputs
-                   WorkspaceBrowser RBWX.Banana.Banana Notebook RBWX.RBWX
+    other-modules: Utility CabalParsing CurrentWorkspace AuiManager
+                   EventInputs WorkspaceBrowser RBWX.Banana.Banana Notebook RBWX.RBWX
                    RBWX.Banana.WX.Additions RBWX.Banana.WX.Core.Lift
                    RBWX.Banana.WX.Core.ContextMenu RBWX.Banana.WX.Core.Core Dialogs
                    MapEditor SourceEditor Paths_mudFrp Paths
