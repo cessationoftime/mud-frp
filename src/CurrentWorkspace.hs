@@ -21,6 +21,35 @@ import System.Directory
 import System.FilePath
 import Dialogs
 
+import System.Environment (getArgs)
+import Data.Maybe (fromMaybe,maybeToList, listToMaybe)
+import Utility (readCatch)
+
+--get the first argument if it exists, which is the workspace filePath
+getWorkspaceArg :: IO String
+getWorkspaceArg = do
+  args <- liftIO $ getArgs
+  return $ fromMaybe "" $ listToMaybe args
+
+readInitialWorkspaceState :: IO WorkspaceState
+readInitialWorkspaceState = getWorkspaceArg >>= readWorkspaceState
+
+-- | if workspace or project file does not exist, continue as though the contents were empty.
+readWorkspaceState :: FilePath -> IO WorkspaceState
+readWorkspaceState workspaceFilePath = do
+  case workspaceFilePath of
+    "" -> do return $ WorkspaceState "" []
+    _ ->  do contents <- readCatch workspaceFilePath
+             let projectList = read contents :: [String]
+             projects <- sequence $ readProjectState <$> projectList
+             return $ WorkspaceState workspaceFilePath projects
+
+-- | read project file (.n6proj) file contents
+readProjectState :: FilePath -> IO Project
+readProjectState fp = do
+  contents <- readCatch fp
+  return (fp,contents)
+
 currentWorkspaceSetup :: Frameworks t => Frame () -> Event t () -> Event t () -> Event t () -> Event t () -> Moment t (Behavior t WorkspaceStateChange)
 currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImportProject = do
   eCreateProjectFP <- fileDialogOkEvent New "NewProject.cabal" [Cabal] frame1 eCreateProject
@@ -35,8 +64,10 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
   eCreateProjectState <- processCreateProjectFP eCreateProjectFP2
   eCreateWorkspaceState <- processCreateWorkspaceFP eCreateWorkspaceFP
   eImportProjectState <- processCreateProjectFP eImportProjectFP2
-  let eOpenWorkspaceState  = processOpenWorkspaceFP eOpenWorkspaceFP
-      bWorkspaceStateChange = accumB (WorkspaceStateChange WorkspaceChangeInit $ WorkspaceState "" []) (unions [eCreateProjectState,eImportProjectState, eCreateWorkspaceState,eOpenWorkspaceState])
+  eOpenWorkspaceState <- processOpenWorkspaceFP eOpenWorkspaceFP
+  initialWorkspaceState <- liftIO readInitialWorkspaceState
+   
+  let bWorkspaceStateChange = accumB (WorkspaceStateChange WorkspaceChangeInit initialWorkspaceState) (unions [eCreateProjectState,eImportProjectState, eCreateWorkspaceState,eOpenWorkspaceState])
   writeOnChanges `ioOnChanges` bWorkspaceStateChange 
   return bWorkspaceStateChange
 
@@ -47,11 +78,13 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
    -- let eCreateWorkspaceContentOk = ("",) <$> eCreateWorkspaceOk
     --eCreated <- (createIfNotExist newWorkspaceFile) `ioOnEvent` eCreateWorkspaceContentOk
    -- let eCreated2 = snd <$> eCreateWorkspaceOk
-    return $ (\fp (WorkspaceStateChange _ (WorkspaceState _ prjs)) -> WorkspaceStateChange (OpenWorkspace fp) $ WorkspaceState fp prjs) <$> eCreateWorkspaceOk
+    return $ (\fp _ -> WorkspaceStateChange (OpenWorkspace fp) $ WorkspaceState fp []) <$> eCreateWorkspaceOk
 
-  processOpenWorkspaceFP :: Event t FilePath -> Event t (WorkspaceStateChange -> WorkspaceStateChange)
-  processOpenWorkspaceFP eOpenWorkspaceFP =
-    (\fp (WorkspaceStateChange _ (WorkspaceState _ prjs)) -> WorkspaceStateChange (OpenWorkspace fp) $ WorkspaceState fp prjs) <$> eOpenWorkspaceFP
+  processOpenWorkspaceFP ::  Frameworks t =>
+    Event t FilePath -> Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
+  processOpenWorkspaceFP eOpenWorkspaceFP = do
+    workspaceState <- readWorkspaceState `mapIOreaction` eOpenWorkspaceFP 
+    return $ (\wss@(WorkspaceState fp _) _ -> WorkspaceStateChange (OpenWorkspace fp) wss) <$> workspaceState
 
   processCreateProjectFP :: Frameworks t =>
     Event t (FilePath,FilePath) ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))

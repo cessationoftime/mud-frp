@@ -4,11 +4,12 @@ import MapEditor
 import RBWX.RBWX
 import Notebook
 import Data.List (find)
-import Data.Maybe (fromMaybe,maybeToList)
+import Data.Maybe (fromMaybe,maybeToList, listToMaybe)
 import WorkspaceBrowser
 import EventInputs
 import AuiManager
 import CurrentWorkspace
+import System.Environment (getArgs)
 
 -- TODO: Haskelletor
 
@@ -20,7 +21,8 @@ import CurrentWorkspace
 ------------------------------------------------------------------------------}
 -- TODO: setup wxAUI
 main :: IO ()
-main = start mainNetwork
+main = do
+  start $ mainNetwork 
 
 --testi
 {-----------------------------------------------------------------------------
@@ -40,6 +42,7 @@ mainNetwork = do
  -- event network
 networkDescription :: forall t. Frameworks t => Moment t ()
 networkDescription = do
+
     -- Layout
     frame1 <- liftIO $ frameMax [ text  := "Editor for the Functional Interactive Fiction Engine (E-FIFE)"
       , resizeable := True]
@@ -69,7 +72,7 @@ networkDescription = do
     (eCreateWorkspace,eOpenWorkspace,eCreateProject,eImportProject, wireupWorkspaceBrowser) <- setupWorkspaceBrowser frame1
 
     --represents the current workspace state
-    bWorkspaceState <-  currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImportProject
+    bWorkspaceState <- currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImportProject
 
 
     -- view the workspace State as it changes

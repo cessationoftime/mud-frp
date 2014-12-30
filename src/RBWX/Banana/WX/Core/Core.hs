@@ -25,6 +25,7 @@ module RBWX.Banana.WX.Core.Core (
   ,mapIOchainreaction
   ,mapIOchainreaction2
   ,ioOnEvent
+  ,ioOnEvent2
   ,ioAccumB
   ,ioAccumChanges
   ,ioOnChanges
@@ -52,6 +53,22 @@ ioOnEvent func ev = do
      reactimate $ (\aa -> func aa >> handler aa) <$> ev
      fromAddHandler adder
 
+ioOnEvent2 :: Frameworks t =>
+  (a -> IO b) -> Event t a ->  Moment t (Event t (a,b))
+ioOnEvent2 func ev = do
+     (event,handler) :: (Event t (a,b), Handler (a, b))  <- Frame.newEvent
+     reactimate $ (\aa -> func aa >>= (\bb -> handler (aa,bb))) <$> ev
+     return event
+
+     {-
+     (event,handler) :: (Event t (a,b), Handler (a, b))  <- Frame.newEvent
+    -- the chainfunction will call the handler to trigger the new event
+    reactimate $ (\evb ->
+        let handler2 = (\aaa -> handler (evb,aaa))
+        in chainfunc handler2
+      ) <$> ev
+    return event
+-}
 ioOnChanges :: Frameworks t =>
   (a -> IO ()) -> Behavior t a ->  Moment t (Event t a)
 ioOnChanges func beh = do

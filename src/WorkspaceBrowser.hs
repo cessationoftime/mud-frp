@@ -40,7 +40,7 @@ layoutWhen (Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOp
       _ <- windowShow buttonCreateWS
       _ <- windowShow buttonOpenWS
       set workspacePanel [ layout := fill $ column 2 [ widget buttonOpenWS, widget buttonCreateWS ] ]
--- when only workspace is open, no projects
+-- when only workspace is open, no projects 
 layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode []) = do
       _ <- windowShow workspaceTree
       _ <- windowShow buttonCreateProject
@@ -124,14 +124,14 @@ loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS 
     windowFreeze workspacePanel
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
-
+    liftIO $ putStrLn $ "loadProject: " ++ fp
      -- add root directory
     --(rootPath,rootName) <- getRootDir
     newProjNode <- treeCtrlAppendItem workspaceTree wsNode baseName (imageIndex imgDisk) imageNone objectNull
 
-    treeCtrlSetItemPath workspaceTree wsNode directory
-    treeCtrlAddSubDirs workspaceTree wsNode
-    --treeCtrlExpandAllChildren workspaceTree root
+    treeCtrlSetItemPath workspaceTree newProjNode directory
+    treeCtrlAddSubDirs workspaceTree newProjNode
+    treeCtrlExpand workspaceTree wsNode
 
     let newWbData = Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode (newProjNode:projNodes)
     layoutWhen newWbData
@@ -147,7 +147,7 @@ loadWorkspace fp wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCrea
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
   -- set top node
-    workspaceNode <- treeCtrlAddRoot workspaceTree ("Workspace: " ++ baseName) (imageIndex imgComputer) imageNone objectNull
+    workspaceNode <- treeCtrlAddRoot workspaceTree ("Workspace: " ++ baseName) (imageIndex imgComputer) (imageIndex imgComputer) objectNull
 
     treeCtrlSetItemPath workspaceTree workspaceNode ""
 
@@ -179,8 +179,7 @@ setupGui window1 = do
     --TODO: need a context menu option to close the workspace.
 
     -- TreeCtrl setup
-    workspaceTree <- treeCtrl workspacePanel []
-
+    workspaceTree <- treeCtrlEx workspacePanel ( wxTR_LINES_AT_ROOT .+. wxTR_HAS_BUTTONS .+. wxTR_EDIT_LABELS .+. wxTR_HAS_VARIABLE_ROW_HEIGHT .+. wxCLIP_CHILDREN) []
     -- image list
     images     <- imageListFromFiles (sz 16 16) imageFiles
 
