@@ -18,7 +18,7 @@ import Paths (getDataFile)
 import RBWX.RBWX
 import EventInputs
 import qualified Reactive.Banana.Frameworks as Framew
-
+import CabalParsing
 newtype WorkspaceBrowser = WorkspaceBrowser (Panel ())
 
 browserPanel :: WorkspaceBrowser -> Panel ()
@@ -124,7 +124,7 @@ loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS 
     windowFreeze workspacePanel
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
-    liftIO $ putStrLn $ "loadProject: " ++ fp
+
      -- add root directory
     --(rootPath,rootName) <- getRootDir
     newProjNode <- treeCtrlAppendItem workspaceTree wsNode baseName (imageIndex imgDisk) imageNone objectNull

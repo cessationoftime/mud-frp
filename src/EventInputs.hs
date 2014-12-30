@@ -15,7 +15,7 @@
 
 module EventInputs where
 import RBWX.RBWX
-
+import CabalParsing
 -------------- Notebook
 
 type NotebookInput t = Event t NotebookChange
@@ -36,8 +36,8 @@ data WorkspaceBrowserChange = WorkspaceStateInit | StateChange WorkspaceState | 
 
 -------------- CurrentWorkspace
 
-type Project = (FilePath,String)
-data WorkspaceState = WorkspaceState { workspaceFile :: FilePath, projects :: [Project] } deriving (Eq,Show)
+data ProjectState = CreateProjectState FilePath String| ImportProjectState FilePath String | ProjectState FilePath String CabalPackage deriving (Eq,Show)
+data WorkspaceState = WorkspaceState { workspaceFile :: FilePath, projects :: [ProjectState] } deriving (Eq,Show)
 
 data WorkspaceChangeType = WorkspaceChangeInit | OpenWorkspace FilePath | CloseWorkspace | OpenProject FilePath | CloseProject FilePath
 

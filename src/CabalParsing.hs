@@ -22,8 +22,10 @@ import Distribution.System
 import Distribution.Text
 import Distribution.Verbosity
 import Distribution.Version
-
-
+import Distribution.ModuleName
+import Data.Maybe
+import Data.List (nub)
+import Control.Applicative ((<$>))
 ghc = [7,6,3]
 
 data CabalPackage = CabalPackage {
@@ -31,19 +33,30 @@ data CabalPackage = CabalPackage {
   ,packageVersion :: String
   ,packageDescription :: String
   ,packageDepends :: [String]
-} deriving Show
-
+  ,packageModules :: [ModuleName]
+} deriving (Show,Eq)
 
 parseCabalPackage :: FilePath -> IO CabalPackage
 parseCabalPackage file = do
   pkg <- readPackageDescription silent file
   finalPkg <- return $ finalizePD pkg
-  return $ Cabal
-  (display $ pkgName $ package finalPkg)
-  (display $ pkgVersion $ package finalPkg)
-  (description finalPkg)
-  [display pn | Just l <- [library finalPkg], Dependency pn _ <- targetBuildDepends $ libBuildInfo l]
+  return $ CabalPackage
+    (display $ pkgName $ package finalPkg)
+    (display $ pkgVersion $ package finalPkg)
+    (description finalPkg)
+    [display pn | Just l <- [library finalPkg], Dependency pn _ <- targetBuildDepends $ libBuildInfo l]
+    (getModules finalPkg)
   where
   finalizePD pkg = case finalizePackageDescription [] (const True) (Platform I386 Linux) (CompilerId GHC (Version ghc [])) [] pkg of
     Left _ -> flattenPackageDescription pkg
     Right (pkg,_) -> pkg
+
+getModules :: PackageDescription -> [ModuleName]
+getModules pd =
+  let libM = concat $ libModules <$> (maybeToList $ library pd) :: [ModuleName]
+      exeM = concat $ exeModules <$> executables pd :: [ModuleName]
+  in nub $ libM ++ exeM
+
+
+
+

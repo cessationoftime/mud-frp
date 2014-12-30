@@ -1,0 +1,14 @@
+Version of workspace file format:
+               2
+Time of storage:
+               "Tue Dec 30 12:59:48 Eastern Standard Time 2014"
+Name of the workspace:
+               "mudFrp.cabal"
+File paths of contained packages:
+               ["mudFrp.cabal"]
+Maybe file path of an active package:
+               Just "mudFrp.cabal"
+Maybe name of an active executable:
+               Nothing
+Version Control System configurations for packages:
+               fromList []
