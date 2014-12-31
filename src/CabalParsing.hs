@@ -58,5 +58,12 @@ getModules pd =
   in nub $ libM ++ exeM
 
 
+buildInfos :: PackageDescription -> [BuildInfo]
+buildInfos pd =
+    let libM = libBuildInfo <$> (maybeToList $ library pd) :: [BuildInfo]
+        exeM = buildInfo <$> executables pd :: [BuildInfo]
+    in libM ++ exeM
+
+
 
 

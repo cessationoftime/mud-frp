@@ -184,7 +184,7 @@ setupGui window1 = do
     --TODO: need a context menu option to close the workspace.
 
     -- TreeCtrl setup
-    workspaceTree <- treeCtrlEx workspacePanel ( wxTR_LINES_AT_ROOT .+. wxTR_HAS_BUTTONS .+. wxTR_EDIT_LABELS .+. wxTR_HAS_VARIABLE_ROW_HEIGHT .+. wxCLIP_CHILDREN) []
+    workspaceTree <- treeCtrlEx workspacePanel ( wxTR_LINES_AT_ROOT .+. wxTR_HAS_BUTTONS .+. wxTR_HAS_VARIABLE_ROW_HEIGHT .+. wxCLIP_CHILDREN) []
     -- image list
     images     <- imageListFromFiles (sz 16 16) imageFiles
 
