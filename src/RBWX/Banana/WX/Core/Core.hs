@@ -72,10 +72,12 @@ ioOnEvent2 func ev = do
 ioOnChanges :: Frameworks t =>
   (a -> IO ()) -> Behavior t a ->  Moment t (Event t a)
 ioOnChanges func beh = do
-     (adder,handler) <- liftIO newAddHandler
+     (event,handler) :: (Event t a, Handler a)  <- Frame.newEvent
+     --(adder,handler) <- liftIO newAddHandler
      changeEvent <- changes beh
      reactimate' $ (\aa ->  (\bb -> func bb >> handler bb) <$> aa) <$> changeEvent
-     fromAddHandler adder
+     --fromAddHandler adder
+     return event
 
 -- | start with an initial value and combine with incoming events, perform the IO action upon receiving the event. Use the IO output to upade the Behavior.
 ioAccumB :: Frameworks t =>
@@ -105,8 +107,8 @@ ioAccumChanges acc beh ioFunc = do
     return steppingBehavior
 
 -- | internal shared function for mapIOReaction and mapIOreaction2
-procIO :: (b  -> IO ()) -> (a -> IO b) -> a -> IO ()
-procIO eventBInput eventFunc  inp= eventFunc inp >>= eventBInput
+procIO :: Handler b -> (a -> IO b) -> a -> IO ()
+procIO eventBInput eventFunc inp= eventFunc inp >>= eventBInput
 
 -- | perform the IO on the given event, use the output of the IO to create a new event
 mapIOreaction :: Frameworks t =>
@@ -179,7 +181,7 @@ mapIOchainreaction func ev = do
     reactimate $ (func  handler) <$ ev
     return adder
 
--- | perform IO on the given event, allow the IO to trigger a new event. Pass the value of the triggering event to the output event 
+-- | perform IO on the given event, allow the IO to trigger a new event. Pass the value of the triggering event to the output event
 mapIOchainreaction2 :: Frameworks t => forall a b.
    ChainIO b -> Event t a -> Moment t (Event t (a, b))
 mapIOchainreaction2 chainfunc ev = do
@@ -190,7 +192,7 @@ mapIOchainreaction2 chainfunc ev = do
         in chainfunc handler2
       ) <$> ev
     return event
-    
+
 -- from defs.h
 wxID_ANY :: Int
 wxID_ANY = -1

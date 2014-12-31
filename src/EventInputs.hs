@@ -39,7 +39,18 @@ data WorkspaceBrowserChange = WorkspaceStateInit | StateChange WorkspaceState | 
 data ProjectState = CreateProjectState FilePath String| ImportProjectState FilePath String | ProjectState FilePath String CabalPackage deriving (Eq,Show)
 data WorkspaceState = WorkspaceState { workspaceFile :: FilePath, projects :: [ProjectState] } deriving (Eq,Show)
 
-data WorkspaceChangeType = WorkspaceChangeInit | OpenWorkspace FilePath | CloseWorkspace | OpenProject FilePath | CloseProject FilePath
+data WorkspaceChangeType = WorkspaceChangeInit | OpenWorkspace FilePath | CloseWorkspace | OpenProject ProjectState | CloseProject FilePath
 
 -- | the change that has taken place.  This data should be sent to downstream events.
 data WorkspaceStateChange = WorkspaceStateChange {lastchange :: WorkspaceChangeType, current :: WorkspaceState}
+
+-- | get the project filepath and the project file's content
+projectStateProjectFile :: ProjectState -> (FilePath,String)
+projectStateProjectFile (ProjectState fp cabalFp _) = (fp,cabalFp)
+projectStateProjectFile (CreateProjectState fp cabalFp) = (fp,cabalFp)
+projectStateProjectFile (ImportProjectState fp cabalFp) = (fp,cabalFp)
+
+projectStateFilePath :: ProjectState -> FilePath
+projectStateFilePath (ProjectState fp _ _) = fp
+projectStateFilePath (CreateProjectState fp _) = fp
+projectStateFilePath (ImportProjectState fp _) = fp

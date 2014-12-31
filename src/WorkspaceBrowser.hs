@@ -19,6 +19,7 @@ import RBWX.RBWX
 import EventInputs
 import qualified Reactive.Banana.Frameworks as Framew
 import CabalParsing
+import Control.Monad (foldM)
 newtype WorkspaceBrowser = WorkspaceBrowser (Panel ())
 
 browserPanel :: WorkspaceBrowser -> Panel ()
@@ -40,7 +41,7 @@ layoutWhen (Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOp
       _ <- windowShow buttonCreateWS
       _ <- windowShow buttonOpenWS
       set workspacePanel [ layout := fill $ column 2 [ widget buttonOpenWS, widget buttonCreateWS ] ]
--- when only workspace is open, no projects 
+-- when only workspace is open, no projects
 layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode []) = do
       _ <- windowShow workspaceTree
       _ <- windowShow buttonCreateProject
@@ -109,18 +110,22 @@ wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS butto
  -- let
  -- do
 
+
 renderWorkspaceState :: WorkspaceStateChange -> WorkspaceBrowserData ->  IO WorkspaceBrowserData
-renderWorkspaceState (WorkspaceStateChange (OpenWorkspace fp) _) wbData@(Nodeless _ _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
-  loadWorkspace fp wbData
-renderWorkspaceState (WorkspaceStateChange (OpenProject fp) _) wbData@(Noded _ _ _ _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
-  loadProject fp wbData
-renderWorkspaceState (WorkspaceStateChange (OpenProject fp) _) (Nodeless _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
+renderWorkspaceState (WorkspaceStateChange (OpenWorkspace fp) (WorkspaceState _ prjs)) wbData@(Nodeless _ _ _ _ _ _ _) = do
+--TODO code rendering, loadProject and loadWorkspace when appropriate
+  wbData2 <- loadWorkspace wbData fp
+  foldM loadProject wbData2 prjs
+renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) wbData@(Noded _ _ _ _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
+  loadProject wbData prj
+renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) (Nodeless _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
 renderWorkspaceState (WorkspaceStateChange (OpenWorkspace _) _) (Noded _ _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenWorkspace, Noded = should not happen"
 
 
 -- add project node to browser
-loadProject :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
-loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode projNodes) = do
+loadProject :: WorkspaceBrowserData -> ProjectState -> IO WorkspaceBrowserData
+loadProject wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode projNodes) prj = do
+    let fp = projectStateFilePath prj
     windowFreeze workspacePanel
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
@@ -140,8 +145,8 @@ loadProject fp wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS 
     return newWbData
 
 -- add workspace node to browser
-loadWorkspace :: FilePath -> WorkspaceBrowserData -> IO WorkspaceBrowserData
-loadWorkspace fp wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject) = do
+loadWorkspace :: WorkspaceBrowserData -> FilePath -> IO WorkspaceBrowserData
+loadWorkspace wbData@(Nodeless frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject) fp = do
     windowFreeze workspacePanel
 
     let baseName = takeBaseName fp

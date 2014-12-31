@@ -37,16 +37,19 @@ readInitialWorkspaceState = getWorkspaceArg >>= readWorkspaceState
 -- | if workspace or project file does not exist, continue as though the contents were empty.
 readWorkspaceState :: FilePath -> IO WorkspaceState
 readWorkspaceState workspaceFilePath = do
-  case workspaceFilePath of
-    "" -> do return $ WorkspaceState "" []
-    _ ->  do contents <- readCatch workspaceFilePath
-             let projectList = read contents :: [String]
-             projects <- sequence $ readProjectState <$> projectList
-             return $ WorkspaceState workspaceFilePath projects
+  putStrLn $ "readWorkspaceState: " ++ workspaceFilePath
+  if workspaceFilePath == ""
+    then do return $ WorkspaceState "" []
+    else do contents <- readCatch workspaceFilePath
+            putStrLn $ "readWorkspaceState: " ++ contents ++ " " ++ workspaceFilePath
+            let projectList = read contents :: [String]
+            projects <- sequence $ readProjectState <$> projectList
+            return $ WorkspaceState workspaceFilePath projects
 
 -- | read project file (.n6proj) file contents
 readProjectState :: FilePath -> IO ProjectState
 readProjectState fp = do
+  putStrLn "readProjectState"
   cabalFp <- readCatch fp
   cabal <- parseCabalPackage cabalFp
   putStrLn $ show cabal
@@ -85,20 +88,22 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
   processOpenWorkspaceFP ::  Frameworks t =>
     Event t FilePath -> Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processOpenWorkspaceFP eOpenWorkspaceFP = do
-    workspaceState <- readWorkspaceState `mapIOreaction` eOpenWorkspaceFP
+    workspaceState :: Event t WorkspaceState <- readWorkspaceState `mapIOreaction` eOpenWorkspaceFP
     return $ (\wss@(WorkspaceState fp _) _ -> WorkspaceStateChange (OpenWorkspace fp) wss) <$> workspaceState
   -- create project using NewProjectState because we should delay reading/creation of the cabal file until writeOnChanges
   processCreateProjectFP :: Frameworks t =>
     Event t (FilePath,FilePath) ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processCreateProjectFP eCreateProjectOk = do
     return $ (\(c,fp) (WorkspaceStateChange _ (WorkspaceState wfp prjs)) ->
-       WorkspaceStateChange (OpenProject fp) (WorkspaceState wfp ((CreateProjectState fp c):prjs))) <$> eCreateProjectOk
+       let cps = (CreateProjectState fp c) in
+       WorkspaceStateChange (OpenProject cps) (WorkspaceState wfp (cps:prjs))) <$> eCreateProjectOk
 
-  importCreateProjectFP :: Frameworks t =>
+  processImportProjectFP :: Frameworks t =>
     Event t (FilePath,FilePath) ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
-  importCreateProjectFP eCreateProjectOk = do
+  processImportProjectFP eCreateProjectOk = do
     return $ (\(c,fp) (WorkspaceStateChange _ (WorkspaceState wfp prjs)) ->
-       WorkspaceStateChange (OpenProject fp) (WorkspaceState wfp ((ImportProjectState fp c):prjs))) <$> eCreateProjectOk
+       let ips = (ImportProjectState fp c) in
+       WorkspaceStateChange (OpenProject ips) (WorkspaceState wfp (ips:prjs))) <$> eCreateProjectOk
 
 
   -- | write changes to files after (Behavior t WorkspaceStateChange) has changed
@@ -135,4 +140,5 @@ writeProjectFile (ProjectState fp cabalFp _) = do
 
 writeWorkspaceFile :: WorkspaceState -> IO ()
 writeWorkspaceFile (WorkspaceState fp projects) = do
-  writeFile fp $ show $ [a |ProjectState a b c <- projects]
+  putStrLn $ "writeWorkspaceFile: " ++ show (fst .  projectStateProjectFile <$> projects)
+  writeFile fp $ show $ fst .  projectStateProjectFile <$> projects
