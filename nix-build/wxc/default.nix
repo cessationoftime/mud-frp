@@ -10,7 +10,7 @@ inherit (pkgs.gtkLibs) gtkmm;
 
 in cabal.mkDerivation (self: {
     pname = "wxc";
-    version = "0.91.0.0";
+    version = "0.92.0.0";
     src = ../../../wxHaskell/wxc;
     buildDepends = [ wxdirect ];
     extraLibraries = [ xlibs.libX11 mesa wxGTK ];

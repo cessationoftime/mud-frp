@@ -4,7 +4,7 @@ let inherit (haskellPackages) parsec strict time filepath;
 
 in cabal.mkDerivation (self: {
     pname = "wxdirect";
-    version = "0.91.0.0";
+    version = "0.92.0.0";
     src = ../../../wxHaskell/wxdirect;
     buildDepends = [ filepath parsec strict time ];
     buildTools = [ cabalInstall ];
