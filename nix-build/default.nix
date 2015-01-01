@@ -16,7 +16,15 @@ let
 
   haskellPackages = pkgs.haskellPackages.override {
    extension = self: super: {
-      cabalInstall = super.cabalInstall_1_20_0_3;
+     cabalInstall = super.cabalInstall_1_20_0_3;
+
+     ghcPkgLib = import ./ghcPkgLib {
+       inherit pkgs haskellPackages cabal cabalInstall;
+     };
+ 
+     buildwrapper = import ./buildwrapper {
+       inherit pkgs haskellPackages cabal cabalInstall;
+     };
 
      wxdirect = import ./wxdirect {
        inherit pkgs haskellPackages cabal cabalInstall;
@@ -42,7 +50,7 @@ let
 };
 
   inherit (haskellPackages) cabal cabalInstall
-	      executablePath random split filepath reactiveBanana wxdirect wxc wxcore wx reactiveBananaWx;
+	      executablePath random split filepath reactiveBanana wxdirect wxc wxcore wx reactiveBananaWx buildwrapper;
 
 #  inherit (pkgs.gtkLibs) gtkmm;
    
@@ -56,7 +64,7 @@ in cabal.mkDerivation (self: {
 	  pname = "mud-frp";
 	  version = "0.1.0.0";
 	  src = ../.;
-	  buildDepends = [ cabalInstall executablePath random split filepath reactiveBanana wxcore wx reactiveBananaWx makeWrapper];
+	  buildDepends = [ cabalInstall executablePath random split filepath reactiveBanana wxcore wx reactiveBananaWx makeWrapper buildwrapper];
 	  extraLibraries = [ xlibs.libX11 wxGTK gtk mesa ];
 	  buildTools = [ cabalInstall ];
 	  enableSplitObjs = false;

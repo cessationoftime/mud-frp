@@ -1,6 +1,8 @@
 n6 - IDE design  v0.0.1
 ========================
 
+## Use Scion (EclipseFP) for the backend
+
 ## Settings
 * A workspace is a set of projects listed in a *.n6 file. A bit like a Visual Studio *.sln file. 
 * A project is a *.n6proj file. n6proj files point to either a *.cabal file or a *.nix file which contains the project build settings.
