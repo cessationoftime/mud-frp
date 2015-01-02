@@ -1,6 +1,12 @@
 mud-frp
 =======
 
+== Git Clone with BuildWrapper submodule
+
+```
+git clone --recursive https://github.com/cessationoftime/mud-frp.git
+```
+
 MUD game editor using functional reactive programming
 
 == Troubleshooting
