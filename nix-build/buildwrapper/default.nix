@@ -4,7 +4,7 @@ let
 
 inherit (haskellPackages) filepath mtl Cabal dynamicCabal process regexTdfa ghc ghcPaths syb text vector
                    haskellSrcExts cpphs aeson unorderedContainers utf8String attoparsec transformers deepseq
-                   conduit conduitExtra async cmdargs HUnit HTF ghcPkgLib;
+                   conduit conduitExtra async cmdargs HUnit HTF;
 
 in cabal.mkDerivation (self: {
     pname = "buildwrapper";
@@ -12,7 +12,7 @@ in cabal.mkDerivation (self: {
     src = ../../../BuildWrapper;
     buildDepends = [ filepath mtl Cabal dynamicCabal process regexTdfa ghc ghcPaths syb text vector
                    haskellSrcExts cpphs aeson unorderedContainers utf8String attoparsec transformers deepseq
-                   conduit conduitExtra async cmdargs HUnit HTF ghcPkgLib];
+                   conduit conduitExtra async cmdargs HUnit HTF];
     buildTools = [ cabalInstall ];
 
 

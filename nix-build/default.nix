@@ -16,11 +16,14 @@ let
 
   haskellPackages = pkgs.haskellPackages.override {
    extension = self: super: {
-     cabalInstall = super.cabalInstall_1_20_0_3;
-
-     ghcPkgLib = import ./ghcPkgLib {
-       inherit pkgs haskellPackages cabal cabalInstall;
-     };
+     cabalInstall = super.cabalInstall_1_20_0_4;
+     #aeson = super.aeson_0_7_0_4;
+     #scientific = super.scientific_0_2_0_2;
+      cabal = pkgs.haskellPackages.cabalNoTest;
+      
+    # ghcPkgLib = import ./ghcPkgLib {
+    #   inherit pkgs haskellPackages cabal cabalInstall;
+     #};
  
      buildwrapper = import ./buildwrapper {
        inherit pkgs haskellPackages cabal cabalInstall;
