@@ -9,7 +9,7 @@ inherit (haskellPackages) filepath mtl Cabal dynamicCabal process regexTdfa ghc 
 in cabal.mkDerivation (self: {
     pname = "buildwrapper";
     version = "0.9.0";
-    src = ../../../BuildWrapper;
+    src = ../../BuildWrapper;
     buildDepends = [ filepath mtl Cabal dynamicCabal process regexTdfa ghc ghcPaths syb text vector
                    haskellSrcExts cpphs aeson unorderedContainers utf8String attoparsec transformers deepseq
                    conduit conduitExtra async cmdargs HUnit HTF];
