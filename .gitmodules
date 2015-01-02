@@ -1,0 +1,3 @@
+[submodule "BuildWrapper"]
+	path = BuildWrapper
+	url = https://github.com/cessationoftime/BuildWrapper.git
