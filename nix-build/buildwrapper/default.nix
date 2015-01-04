@@ -1,14 +1,14 @@
-{ pkgs, haskellPackages, cabal, cabalInstall }:
+{ pkgs, haskellPackages_ghc784, cabal, cabalInstall }:
 
 let
 
-inherit (haskellPackages) filepath mtl Cabal dynamicCabal process regexTdfa ghc ghcPaths syb text vector
+inherit (haskellPackages_ghc784) filepath mtl Cabal dynamicCabal process regexTdfa ghc ghcPaths syb text vector
                    haskellSrcExts cpphs aeson unorderedContainers utf8String attoparsec transformers deepseq
                    conduit conduitExtra async cmdargs HUnit HTF;
 
 in cabal.mkDerivation (self: {
     pname = "buildwrapper";
-    version = "0.9.0";
+    version = "0.8.9";
     src = ../../BuildWrapper;
     buildDepends = [ filepath mtl Cabal dynamicCabal process regexTdfa ghc ghcPaths syb text vector
                    haskellSrcExts cpphs aeson unorderedContainers utf8String attoparsec transformers deepseq
@@ -17,7 +17,7 @@ in cabal.mkDerivation (self: {
 
 
     isLibrary = true;
-    isExecutable = false;
+    isExecutable = true;
         
   #set the Language environment variable to English to avoid the warning,
   #during cabal configure, that "ghc can't determine gcc version" 

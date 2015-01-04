@@ -1,8 +1,8 @@
-{ pkgs, haskellPackages, cabal, cabalInstall, wxcore, wx }:
+{ pkgs, haskellPackages_ghc784, cabal, cabalInstall, wxcore, wx }:
 
 let
 
-inherit (haskellPackages) reactiveBanana;
+inherit (haskellPackages_ghc784) reactiveBanana;
 
 in cabal.mkDerivation (self: {
 pname = "reactive-banana-wx";

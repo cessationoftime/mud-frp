@@ -14,46 +14,65 @@ let
 
   unityGtkModule = import ../unityGtkModule/saucybin.nix { inherit pkgs; };
 
-  haskellPackages = pkgs.haskellPackages.override {
+# ghc784Prefs = pkgs.haskell.ghc784Prefs.override {
+#    cabalInstall_1_20_0_6 = super.cabalInstall_1_20_0_6.override { Cabal = self.Cabal_1_20_0_2; };
+    #codex = super.codex.override { hackageDb = super.hackageDb.override { Cabal = self.Cabal_1_20_0_2; }; };
+    #jailbreakCabal = super.jailbreakCabal.override { Cabal = self.Cabal_1_20_0_2; };
+    #MonadRandom = self.MonadRandom_0_2_0_1; # newer versions require transformers >= 0.4.x
+    #mtl = self.mtl_2_1_3_1;
+    #transformersCompat = super.transformersCompat.override { cabal = self.cabal.override {
+    #extension = self: super: { configureFlags = "-fthree " + super.configureFlags or ""; };
+ #}; };
+#};
+
+#packages_ghc784 =
+ # pkgs.haskell.packages { 
+#  ghcPath = pkgs.development.compilers.ghc.7.8.4.nix;
+  #ghcBinary = if stdenv.isDarwin then ghc783Binary else ghc742Binary;
+  #prefFun = ghc784Prefs;
+#};
+
+  haskellPackages_ghc784 = pkgs.haskellPackages_ghc784.override {
    extension = self: super: {
-     cabalInstall = super.cabalInstall_1_20_0_4;
+     #cabalInstall = super.cabalInstall_1_20_0_4;
+     #Cabal = super.Cabal_1_20_0_2;
      #aeson = super.aeson_0_7_0_4;
      #scientific = super.scientific_0_2_0_2;
-      cabal = pkgs.haskellPackages.cabalNoTest;
+      cabal = pkgs.haskellPackages_ghc784.cabalNoTest;
       
     # ghcPkgLib = import ./ghcPkgLib {
-    #   inherit pkgs haskellPackages cabal cabalInstall;
+    #   inherit pkgs haskellPackages_ghc784 cabal cabalInstall;
      #};
  
      buildwrapper = import ./buildwrapper {
-       inherit pkgs haskellPackages cabal cabalInstall;
+       inherit pkgs haskellPackages_ghc784 cabal cabalInstall;
      };
 
      wxdirect = import ./wxdirect {
-       inherit pkgs haskellPackages cabal cabalInstall;
+       inherit pkgs haskellPackages_ghc784 cabal cabalInstall;
      };
 
      wxc = import ./wxc {
-       inherit pkgs haskellPackages cabal cabalInstall wxGTK wxdirect;
+       inherit pkgs haskellPackages_ghc784 cabal cabalInstall wxGTK wxdirect;
      };
 
      wxcore = import ./wxcore {
-       inherit pkgs haskellPackages cabal cabalInstall wxc wxdirect wxGTK;
+       inherit pkgs haskellPackages_ghc784 cabal cabalInstall wxc wxdirect wxGTK;
      };
 
      wx = import ./wx {
-       inherit pkgs haskellPackages cabal cabalInstall wxcore;
+       inherit pkgs haskellPackages_ghc784 cabal cabalInstall wxcore;
     };
   
      reactiveBananaWx = import ./reactiveBananaWx {
-       inherit pkgs haskellPackages cabal cabalInstall wxcore wx;
+       inherit pkgs haskellPackages_ghc784 cabal cabalInstall wxcore wx;
     };
 
    };
 };
 
-  inherit (haskellPackages) cabal cabalInstall
-	      executablePath random split filepath reactiveBanana wxdirect wxc wxcore wx reactiveBananaWx buildwrapper;
+  inherit (haskellPackages_ghc784) cabal cabalInstall
+	      executablePath random split filepath reactiveBanana wxdirect wxc wxcore wx reactiveBananaWx buildwrapper Cabal;
 
 #  inherit (pkgs.gtkLibs) gtkmm;
    
@@ -67,9 +86,9 @@ in cabal.mkDerivation (self: {
 	  pname = "mud-frp";
 	  version = "0.1.0.0";
 	  src = ../.;
-	  buildDepends = [ cabalInstall executablePath random split filepath reactiveBanana wxcore wx reactiveBananaWx makeWrapper buildwrapper];
+	  buildDepends = [ cabalInstall executablePath random split filepath reactiveBanana wxcore wx reactiveBananaWx makeWrapper buildwrapper Cabal];
 	  extraLibraries = [ xlibs.libX11 wxGTK gtk mesa ];
-	  buildTools = [ cabalInstall ];
+	  buildTools = [ cabalInstall buildwrapper];
 	  enableSplitObjs = false;
 
 	  isLibrary = false;

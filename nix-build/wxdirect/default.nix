@@ -1,6 +1,6 @@
-{pkgs, haskellPackages, cabal, cabalInstall }:
+{pkgs, haskellPackages_ghc784, cabal, cabalInstall }:
 
-let inherit (haskellPackages) parsec strict time filepath;
+let inherit (haskellPackages_ghc784) parsec strict time filepath;
 
 in cabal.mkDerivation (self: {
     pname = "wxdirect";

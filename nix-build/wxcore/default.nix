@@ -1,10 +1,10 @@
-{ pkgs, haskellPackages, cabal, cabalInstall, wxc, wxdirect, wxGTK }:
+{ pkgs, haskellPackages_ghc784, cabal, cabalInstall, wxc, wxdirect, wxGTK }:
 
 let 
 
 inherit (pkgs) mesa xlibs;
 
-inherit (haskellPackages) filepath parsec stm time;
+inherit (haskellPackages_ghc784) filepath parsec stm time;
 
 in cabal.mkDerivation (self: {
     pname = "wxcore";
