@@ -23,11 +23,16 @@ let
      #};
  
      #Note: for buildwrapper to function, ghc, buildWrapper and cabalInstall must have the same Cabal library version.
-     cabalInstall = pkgs.callPackage ./cabalInstall/default.nix { 
+     cabalInstall_1_18_0_8 = pkgs.callPackage ./cabalInstall/default.nix { 
         inherit (haskellPackages_ghc784) cabal Cabal filepath HTTP HUnit mtl network QuickCheck random stm testFramework testFrameworkHunit testFrameworkQuickcheck2 zlib;
      };
 
+     cabalInstall = self.cabalInstall_1_18_0_8;
+
      buildwrapper = import ./buildwrapper {
+        #must build Buildwrapper with the version of cabalInstall which matches the version of Cabal that ghc is dependent on.  If ghc is upgraded this will need to change to match.  Buildwrapper may require a different version of the Cabal library to be available at runtime than during build-time. The version of Cabal that cabalInstall was built with must be available at runtime. Use these commands to determine your current settings:  "cabal info Cabal", "cabal --version", "buildwrapper --version"
+
+      
        inherit pkgs haskellPackages_ghc784 cabal cabalInstall;
      };
 
@@ -71,7 +76,8 @@ in cabal.mkDerivation (self: {
 	  src = ../.;
 	  buildDepends = [ executablePath random split filepath reactiveBanana wxcore wx reactiveBananaWx makeWrapper buildwrapper Cabal];
 	  extraLibraries = [ xlibs.libX11 wxGTK gtk mesa ];
-	  buildTools = [ cabalInstall buildwrapper];
+
+	  buildTools = [ cabalInstall buildwrapper]; 
 	  enableSplitObjs = false;
 
 	  isLibrary = false;
