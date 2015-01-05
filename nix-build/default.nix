@@ -1,6 +1,5 @@
 # nix build tested on Ubuntu 13.10
 #
-# cant use yet: cabalInstall_1_20_0_3
 #arguments for the nix expression, syntax is { argname ? defaultvalue, argname ? defaultvalue }
 let
   pkgs = import <nixpkgs> {};
@@ -10,40 +9,24 @@ let
 	     src = ../../wxWidgets-3.0.2;
 	  });
   
-  inherit (pkgs) gtk gnome xlibs mesa makeWrapper wxGTK30;
+  inherit (pkgs) gtk gnome xlibs mesa makeWrapper wxGTK30 haskell;
+  inherit (haskell) stdenv ghc783Binary ghc742Binary ghcHEADPrefs;
 
   unityGtkModule = import ../unityGtkModule/saucybin.nix { inherit pkgs; };
 
-# ghc784Prefs = pkgs.haskell.ghc784Prefs.override {
-#    cabalInstall_1_20_0_6 = super.cabalInstall_1_20_0_6.override { Cabal = self.Cabal_1_20_0_2; };
-    #codex = super.codex.override { hackageDb = super.hackageDb.override { Cabal = self.Cabal_1_20_0_2; }; };
-    #jailbreakCabal = super.jailbreakCabal.override { Cabal = self.Cabal_1_20_0_2; };
-    #MonadRandom = self.MonadRandom_0_2_0_1; # newer versions require transformers >= 0.4.x
-    #mtl = self.mtl_2_1_3_1;
-    #transformersCompat = super.transformersCompat.override { cabal = self.cabal.override {
-    #extension = self: super: { configureFlags = "-fthree " + super.configureFlags or ""; };
- #}; };
-#};
-
-#packages_ghc784 =
- # pkgs.haskell.packages { 
-#  ghcPath = pkgs.development.compilers.ghc.7.8.4.nix;
-  #ghcBinary = if stdenv.isDarwin then ghc783Binary else ghc742Binary;
-  #prefFun = ghc784Prefs;
-#};
-
   haskellPackages_ghc784 = pkgs.haskellPackages_ghc784.override {
    extension = self: super: {
-     #cabalInstall = super.cabalInstall_1_20_0_4;
-     #Cabal = super.Cabal_1_20_0_2;
-     #aeson = super.aeson_0_7_0_4;
-     #scientific = super.scientific_0_2_0_2;
-      cabal = pkgs.haskellPackages_ghc784.cabalNoTest;
+     cabal = pkgs.haskellPackages_ghc784.cabalNoTest;
       
     # ghcPkgLib = import ./ghcPkgLib {
     #   inherit pkgs haskellPackages_ghc784 cabal cabalInstall;
      #};
  
+     #Note: for buildwrapper to function, ghc, buildWrapper and cabalInstall must have the same Cabal library version.
+     cabalInstall = pkgs.callPackage ./cabalInstall/default.nix { 
+        inherit (haskellPackages_ghc784) cabal Cabal filepath HTTP HUnit mtl network QuickCheck random stm testFramework testFrameworkHunit testFrameworkQuickcheck2 zlib;
+     };
+
      buildwrapper = import ./buildwrapper {
        inherit pkgs haskellPackages_ghc784 cabal cabalInstall;
      };
@@ -86,7 +69,7 @@ in cabal.mkDerivation (self: {
 	  pname = "mud-frp";
 	  version = "0.1.0.0";
 	  src = ../.;
-	  buildDepends = [ cabalInstall executablePath random split filepath reactiveBanana wxcore wx reactiveBananaWx makeWrapper buildwrapper Cabal];
+	  buildDepends = [ executablePath random split filepath reactiveBanana wxcore wx reactiveBananaWx makeWrapper buildwrapper Cabal];
 	  extraLibraries = [ xlibs.libX11 wxGTK gtk mesa ];
 	  buildTools = [ cabalInstall buildwrapper];
 	  enableSplitObjs = false;
