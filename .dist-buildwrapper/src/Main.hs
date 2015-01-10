@@ -10,8 +10,7 @@ import EventInputs
 import AuiManager
 import CurrentWorkspace
 import System.Environment (getArgs)
-import Control.Monad
-import CabalParsing
+
 -- TODO: Haskelletor
 
 -- TODO: create open workspace (*.n6)
@@ -23,7 +22,7 @@ import CabalParsing
 -- TODO: setup wxAUI
 main :: IO ()
 main = do
-  start $ mainNetwork
+  start $ mainNetwork 
 
 --testi
 {-----------------------------------------------------------------------------
@@ -92,7 +91,7 @@ networkDescription = do
   --  let addPane b c w =  auiManagerAddPane aui w b c >> return ()
 
     -- finish wiring workspace browser GUI
-    _ <- wireupWorkspaceBrowser bWorkspaceState (\wb -> addPane (objectCast $ browserPanel wb) wxLEFT "Workspace Browser")
+    _ <- wireupWorkspaceBrowser bWorkspaceState (\wb -> addPane (objectCast $ browserPanel wb) wxRIGHT "Workspace Browser")
 
 
 
@@ -180,15 +179,7 @@ networkDescription = do
         showNBMaybe (Just (SourceNotebookPage _ _ fp) ) = fp
         showNBMaybe _ = ""
 
-        showFilePaths :: IO String
-        showFilePaths = do
-          fps <- readCabalBuildInfos
-          return $ show fps
-
     sink status [text :== showNBMaybe <$> bActiveNBPage  ]
-
-    reactimate $ (showFilePaths >>= logWarningMsg) <$ (unions [eDoItMenuButton,eAutoContextItem] )
-
 
   --      bTotal :: Behavior t Int
   --      bTotal = accumB 0 $ (+1) <$ eClosedNotebookPage

@@ -24,58 +24,9 @@ import Distribution.Verbosity
 import Distribution.Version
 import Distribution.ModuleName
 import Data.Maybe
---import Data.Aeson
-import Control.Monad.State
 import Data.List (nub)
 import Control.Applicative ((<$>))
-import Language.Haskell.BuildWrapper.Cabal (CabalBuildInfo)
-import Language.Haskell.BuildWrapper.Base (Verbosity(..),BuildWrapperState(..), WhichCabal(..),OpResult,BuildWrapper)
-import qualified Language.Haskell.BuildWrapper.Cabal as BW
 ghc = [7,6,3]
-
-
---type OpResult a=(a,[BWNote])
---type BuildWrapper=StateT BuildWrapperState IO
-
-readCabalBuildInfos :: IO [FilePath]
-readCabalBuildInfos = do
-   (buildInfos,bwns) <- runGetCabalBuildInfos
-   return $ nub $ concatMap (map snd . BW.cbiModulePaths) buildInfos
-
-runGetCabalBuildInfos :: IO (OpResult [CabalBuildInfo])
-runGetCabalBuildInfos = do
-  let tempFolder = ".dist-buildwrapper"
-      cabalPath = "cabal"
-      cabalFile = "/home/cvanvranken/Documents/leksahWorkspace/WXDiffCtrl-0.0.1/WXDiffCtrl.cabal"
-      verbosity = Normal
-      cabalFlags = ""
-      cabalOption = []
-      logCabal = True
-
-  runCmd (BuildWrapperState tempFolder cabalPath cabalFile verbosity cabalFlags cabalOption logCabal) getCabalBuildInfos
-
-
--- | BuildWrapperState represents a command, take an initial state and evaluate a BuildWrapper function
-runCmd:: BuildWrapperState -> BuildWrapper a -> IO a
-runCmd initialState bwFunc= do
-  resultJson <- evalStateT bwFunc initialState
-  return resultJson
-
--- get build info for each component
-getCabalBuildInfos :: BuildWrapper (OpResult [CabalBuildInfo])
-getCabalBuildInfos = do
-  (mBuildInfos,bwns)<- BW.withCabal Source BW.getAllFiles
-  return $ case mBuildInfos of
-    Just buildInfos->(buildInfos,bwns)
-    Nothing ->([],bwns);
-
-
-
-
-
---get the files of all modules
-getModuleFiles :: BuildWrapper (OpResult [FilePath])
-getModuleFiles = BW.getFilesToCopy
 
 data CabalPackage = CabalPackage {
    packageName :: String
