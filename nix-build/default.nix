@@ -60,9 +60,7 @@ let
              inherit pkgs haskellPackagesModified cabal cabalInstall;
            };
 
-           wxc = import ./wxc {
-             inherit pkgs cabal wxGTK wxdirect;
-           };
+           wxc = callPackage ./wxc { cabal=cabal; wxGTK=wxGTK; wxdirect=wxdirect; }; 
 
            wxcore = import ./wxcore {
              inherit pkgs haskellPackagesModified cabal cabalInstall wxc wxdirect wxGTK;
