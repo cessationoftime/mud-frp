@@ -1,8 +1,8 @@
-{ pkgs, haskellPackages_ghc784, cabal, cabalInstall }:
+{ pkgs, haskellPackagesModified, cabal, cabalInstall }:
 
 let
 
-inherit (haskellPackages_ghc784) filepath mtl Cabal dynamicCabal process regexTdfa ghc ghcPaths syb text vector
+inherit (haskellPackagesModified) filepath mtl Cabal dynamicCabal process regexTdfa ghc ghcPaths syb text vector
                    haskellSrcExts cpphs aeson unorderedContainers utf8String attoparsec transformers deepseq
                    conduit conduitExtra async cmdargs HUnit HTF;
 

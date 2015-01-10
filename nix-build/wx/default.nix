@@ -1,8 +1,8 @@
-{ pkgs, haskellPackages_ghc784, cabal, cabalInstall, wxcore }:
+{ pkgs, haskellPackagesModified, cabal,cabalInstall, wxcore }:
 
 let
 
-inherit (haskellPackages_ghc784) stm;
+inherit (haskellPackagesModified) stm;
 
 in cabal.mkDerivation (self: {
     pname = "wx";

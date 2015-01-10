@@ -1,4 +1,4 @@
-{pkgs, haskellPackages_ghc784, cabal, cabalInstall, wxGTK, wxdirect }:
+{pkgs, cabal, wxGTK, wxdirect }:
 
 let
 
