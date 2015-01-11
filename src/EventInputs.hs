@@ -36,7 +36,7 @@ data WorkspaceBrowserChange = WorkspaceStateInit | StateChange WorkspaceState | 
 
 -------------- CurrentWorkspace
 
-data ProjectState = CreateProjectState FilePath String| ImportProjectState FilePath String | ProjectState FilePath String (OpResult [CabalBuildInfo]) deriving (Show)
+data ProjectState = CreateProjectState FilePath String| ImportProjectState FilePath String (OpResult [CabalBuildInfo]) | ProjectState FilePath String (OpResult [CabalBuildInfo]) deriving (Show)
 data WorkspaceState = WorkspaceState { workspaceFile :: FilePath, projects :: [ProjectState] } deriving (Show)
 
 data WorkspaceChangeType = WorkspaceChangeInit | OpenWorkspace FilePath | CloseWorkspace | OpenProject ProjectState | CloseProject FilePath
@@ -46,7 +46,8 @@ data WorkspaceStateChange = WorkspaceStateChange {lastchange :: WorkspaceChangeT
 
 projectStateBuildInfos :: ProjectState -> [CabalBuildInfo]
 projectStateBuildInfos (ProjectState _ _ (buildInfos,_)) = buildInfos
-projectStateBuildInfos _ = []
+projectStateBuildInfos (CreateProjectState _ _) = []
+projectStateBuildInfos (ImportProjectState _ _ (buildInfos,_)) = buildInfos
 
 projectStateModuleFiles :: ProjectState -> [FilePath]
 projectStateModuleFiles = moduleFiles . projectStateBuildInfos
@@ -54,15 +55,15 @@ projectStateModuleFiles = moduleFiles . projectStateBuildInfos
 projectStateCabalFile :: ProjectState -> FilePath
 projectStateCabalFile (ProjectState _ cabalFp _) = cabalFp
 projectStateCabalFile (CreateProjectState _ cabalFp) = cabalFp
-projectStateCabalFile (ImportProjectState _ cabalFp) = cabalFp
+projectStateCabalFile (ImportProjectState _ cabalFp _) = cabalFp
 
 -- | get the project filepath and the project file's content
 projectStateProjectFile :: ProjectState -> (FilePath,String)
 projectStateProjectFile (ProjectState fp cabalFp _) = (fp,cabalFp)
 projectStateProjectFile (CreateProjectState fp cabalFp) = (fp,cabalFp)
-projectStateProjectFile (ImportProjectState fp cabalFp) = (fp,cabalFp)
+projectStateProjectFile (ImportProjectState fp cabalFp _) = (fp,cabalFp)
 
 projectStateFilePath :: ProjectState -> FilePath
 projectStateFilePath (ProjectState fp _ _) = fp
 projectStateFilePath (CreateProjectState fp _) = fp
-projectStateFilePath (ImportProjectState fp _) = fp
+projectStateFilePath (ImportProjectState fp _ _) = fp

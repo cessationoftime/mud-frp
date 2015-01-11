@@ -51,7 +51,6 @@ readProjectState :: FilePath -> IO ProjectState
 readProjectState fp = do
   cabalFp <- readCatch fp
   opBuildInfo@(cabalBuildInfos,_) <- getCabalBuildInfos cabalFp
-  putStrLn . show $ moduleFiles cabalBuildInfos
   return $ ProjectState fp cabalFp opBuildInfo
 
 currentWorkspaceSetup :: Frameworks t => Frame () -> Event t () -> Event t () -> Event t () -> Event t () -> Moment t (Behavior t WorkspaceStateChange)
@@ -99,11 +98,15 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
 
   processImportProjectFP :: Frameworks t =>
     Event t (FilePath,FilePath) ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
-  processImportProjectFP eCreateProjectOk = do
-    return $ (\(c,fp) (WorkspaceStateChange _ (WorkspaceState wfp prjs)) ->
-       let ips = (ImportProjectState fp c) in
-       WorkspaceStateChange (OpenProject ips) (WorkspaceState wfp (ips:prjs))) <$> eCreateProjectOk
-
+  processImportProjectFP eImportProjectOk = do
+    eProjectState :: Event t ProjectState <- readCabalFile `mapIOreaction` eImportProjectOk
+    return $ (\ips@(ImportProjectState fp c _)  (WorkspaceStateChange _ (WorkspaceState wfp prjs)) ->
+       WorkspaceStateChange (OpenProject ips) (WorkspaceState wfp (ips:prjs))) <$> eProjectState
+    where
+    readCabalFile :: (FilePath,FilePath) -> IO ProjectState
+    readCabalFile (cfp,fp) = do
+      opResult <- liftIO $ getCabalBuildInfos cfp
+      return $ ImportProjectState fp cfp opResult
 
   -- | write changes to files after (Behavior t WorkspaceStateChange) has changed
   writeOnChanges :: WorkspaceStateChange -> IO ()
@@ -132,7 +135,7 @@ writeProjectFile :: ProjectState -> IO ()
 writeProjectFile (CreateProjectState fp cabalFp) = do
   writeFile fp cabalFp
   writeFile cabalFp "" -- write a new cabal file
-writeProjectFile (ImportProjectState fp cabalFp) = do
+writeProjectFile (ImportProjectState fp cabalFp _) = do
   writeFile fp cabalFp
 writeProjectFile (ProjectState fp cabalFp _) = do
   writeFile fp cabalFp

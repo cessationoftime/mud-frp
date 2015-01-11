@@ -134,7 +134,6 @@ loadProject :: WorkspaceBrowserData -> ProjectState -> IO WorkspaceBrowserData
 loadProject wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode projNodes) prj = do
     let fp = projectStateFilePath prj
     let cabalFp = projectStateCabalFile prj
-    putStrLn $ "FILEPATH: " ++ fp
     let moduleFiles = projectStateModuleFiles prj
     windowFreeze workspacePanel
     let baseName = takeBaseName fp
