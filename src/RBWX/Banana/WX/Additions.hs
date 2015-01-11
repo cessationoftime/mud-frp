@@ -16,6 +16,9 @@ import Control.Monad
 keyOnDownEvent :: Event (Window a) (EventKey -> IO ())
 keyOnDownEvent = newEvent "keyOnDown" windowGetOnKeyDown1 windowOnKeyDown
 
+treeOnTreeEvent :: Event (TreeCtrl a) (EventTree -> IO ())
+treeOnTreeEvent = newEvent "treeOnTreeEvent" treeCtrlGetOnTreeEvent treeCtrlOnTreeEvent
+
 -- | Get the current translated key handler of a window.
 windowGetOnKeyDown1 :: Window a -> IO (EventKey -> IO ())
 windowGetOnKeyDown1 window

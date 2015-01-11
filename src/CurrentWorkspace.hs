@@ -49,11 +49,10 @@ readWorkspaceState workspaceFilePath = do
 -- | read project file (.n6proj) file contents
 readProjectState :: FilePath -> IO ProjectState
 readProjectState fp = do
-  putStrLn "readProjectState"
   cabalFp <- readCatch fp
-  cabal <- parseCabalPackage cabalFp
-  putStrLn $ show cabal
-  return $ ProjectState fp cabalFp cabal
+  opBuildInfo@(cabalBuildInfos,_) <- getCabalBuildInfos cabalFp
+  putStrLn . show $ moduleFiles cabalBuildInfos
+  return $ ProjectState fp cabalFp opBuildInfo
 
 currentWorkspaceSetup :: Frameworks t => Frame () -> Event t () -> Event t () -> Event t () -> Event t () -> Moment t (Behavior t WorkspaceStateChange)
 currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImportProject = do

@@ -21,7 +21,8 @@ module RBWX.Banana.WX.Additions,
   eCloseNotebookPage,
   eClosedNotebookPage,
   eChangedNotebookPage,
-  eChangingNotebookPage
+  eChangingNotebookPage,
+  eEventTreeCtrl
   --eNotebookPage,
   --eActiveNotebookPage,
   --bActiveNotebookPage
@@ -44,3 +45,6 @@ eChangedNotebookPage notebook =  event1 notebook auiNotebookOnPageChangedEvent
 
 eChangingNotebookPage ::  Frameworks t => Core.AuiNotebook a -> Moment t (Event t EventAuiNotebook)
 eChangingNotebookPage notebook =  event1 notebook auiNotebookOnPageChangingEvent
+
+eEventTreeCtrl ::  Frameworks t => Core.TreeCtrl a -> Moment t (Event t EventTree)
+eEventTreeCtrl treeCtrl =  event1 treeCtrl treeOnTreeEvent

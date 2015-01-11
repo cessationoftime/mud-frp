@@ -60,7 +60,9 @@ let
              inherit pkgs haskellPackagesModified cabal cabalInstall;
            };
 
-           wxc = callPackage ./wxc { cabal=cabal; wxGTK=wxGTK; wxdirect=wxdirect; }; 
+           wxc = import ./wxc {
+             inherit pkgs cabal wxGTK wxdirect;
+           };
 
            wxcore = import ./wxcore {
              inherit pkgs haskellPackagesModified cabal cabalInstall wxc wxdirect wxGTK;
@@ -80,6 +82,9 @@ let
 
     mudFrp = callPackage ./mudFrp { };
     buildwrapper = haskellPackagesModified.buildwrapper;
+    reactiveBanana = haskellPackagesModified.reactiveBanana;
+    reactiveBananaWx = haskellPackagesModified.reactiveBananaWx;
+    split = haskellPackagesModified.split;
   };
 in
 self

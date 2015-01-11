@@ -12,7 +12,7 @@
 --
 -----------------------------------------------------------------------------
 
-module CabalParsing where
+module CabalParsing (moduleFiles,getCabalBuildInfos, CabalBuildInfo,OpResult) where
 import Distribution.Compiler
 import Distribution.Package
 import Distribution.PackageDescription
@@ -37,22 +37,21 @@ ghc = [7,6,3]
 --type OpResult a=(a,[BWNote])
 --type BuildWrapper=StateT BuildWrapperState IO
 
-readCabalBuildInfos :: IO [FilePath]
-readCabalBuildInfos = do
-   (buildInfos,bwns) <- runGetCabalBuildInfos
-   return $ nub $ concatMap (map snd . BW.cbiModulePaths) buildInfos
+moduleFiles :: [CabalBuildInfo] -> [FilePath]
+moduleFiles buildInfos = nub $ concatMap (map snd . BW.cbiModulePaths) buildInfos
 
-runGetCabalBuildInfos :: IO (OpResult [CabalBuildInfo])
-runGetCabalBuildInfos = do
+-- | given a cabalFilePath get the buildInfos for the cabal file
+getCabalBuildInfos :: FilePath -> IO (OpResult [CabalBuildInfo])
+getCabalBuildInfos cabalFile = do
   let tempFolder = ".dist-buildwrapper"
       cabalPath = "cabal"
-      cabalFile = "/home/cvanvranken/Documents/leksahWorkspace/WXDiffCtrl-0.0.1/WXDiffCtrl.cabal"
+--      cabalFile = "/home/cvanvranken/Documents/leksahWorkspace/WXDiffCtrl-0.0.1/WXDiffCtrl.cabal"
       verbosity = Normal
       cabalFlags = ""
       cabalOption = []
       logCabal = True
 
-  runCmd (BuildWrapperState tempFolder cabalPath cabalFile verbosity cabalFlags cabalOption logCabal) getCabalBuildInfos
+  runCmd (BuildWrapperState tempFolder cabalPath cabalFile verbosity cabalFlags cabalOption logCabal) cabalBuildInfos
 
 
 -- | BuildWrapperState represents a command, take an initial state and evaluate a BuildWrapper function
@@ -62,16 +61,12 @@ runCmd initialState bwFunc= do
   return resultJson
 
 -- get build info for each component
-getCabalBuildInfos :: BuildWrapper (OpResult [CabalBuildInfo])
-getCabalBuildInfos = do
+cabalBuildInfos :: BuildWrapper (OpResult [CabalBuildInfo])
+cabalBuildInfos = do
   (mBuildInfos,bwns)<- BW.withCabal Source BW.getAllFiles
   return $ case mBuildInfos of
     Just buildInfos->(buildInfos,bwns)
     Nothing ->([],bwns);
-
-
-
-
 
 --get the files of all modules
 getModuleFiles :: BuildWrapper (OpResult [FilePath])

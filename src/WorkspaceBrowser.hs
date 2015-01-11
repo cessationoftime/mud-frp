@@ -1,4 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  WorkspaceBrowser
@@ -8,7 +7,7 @@
 --
 -----------------------------------------------------------------------------
 
-module WorkspaceBrowser (setupWorkspaceBrowser,WorkspaceBrowser, browserPanel) where
+module WorkspaceBrowser (setupWorkspaceBrowser,WorkspaceBrowser, browserPanel, browserGetItemPath) where
 
 import System.Directory
 import System.FilePath
@@ -24,6 +23,10 @@ newtype WorkspaceBrowser = WorkspaceBrowser (Panel ())
 
 browserPanel :: WorkspaceBrowser -> Panel ()
 browserPanel (WorkspaceBrowser p) = p
+
+getTreeCtrl :: WorkspaceBrowserData -> TreeCtrl ()
+getTreeCtrl (Nodeless _ _ tCtrl _ _ _ _) = tCtrl
+getTreeCtrl (Noded _ _ tCtrl _ _ _ _ _ _) = tCtrl
 
 data WorkspaceBrowserData =
   Nodeless (Frame ()) (Panel ()) (TreeCtrl ())  (Button ()) (Button ()) (Button ()) (Button ()) |
@@ -65,12 +68,12 @@ layoutWhen (Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenW
 
 type WorkspaceCreation t =  Behavior t WorkspaceStateChange -- ^ Input Events for Workspacebrowser
                          ->  (WorkspaceBrowser -> IO ()) -- ^ Function to Attach the WorkspaceBrowser to Aui, without actually passing AuiManager
-                         ->  Moment t ()
+                         ->  Moment t (Behavior t WorkspaceBrowserData)
 
 
 -- | loads the gui and returns output events as well as a curried function to call the second step, wireupWorkspaceBrowser
 setupWorkspaceBrowser :: (Frameworks t) =>
-  Frame () -> Moment t (Event t (),Event t (),Event t (), Event t (), WorkspaceCreation t)
+  Frame () -> Moment t (Event t (),Event t (),Event t (), Event t (),Event t EventTree, WorkspaceCreation t)
 setupWorkspaceBrowser frame1 = do
     wbData@(Nodeless _ panel tree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject) <- liftIO $ setupGui frame1
 
@@ -83,9 +86,9 @@ setupWorkspaceBrowser frame1 = do
 
 
     eButtonOpenWS <- event0 buttonOpenWS command
+    eTreeEvent <- eEventTreeCtrl tree
 
-
-    return (eButtonCreateWS,eButtonOpenWS,eButtonCreateProject,eButtonImportProject, wireupWorkspaceBrowser frame1 wbData)
+    return (eButtonCreateWS,eButtonOpenWS,eButtonCreateProject,eButtonImportProject,eTreeEvent, wireupWorkspaceBrowser frame1 wbData)
 
 -- | wires up input events, so that the workspace browser will react and render changes to the workspace.
 wireupWorkspaceBrowser :: (Frameworks t) =>
@@ -102,14 +105,13 @@ wireupWorkspaceBrowser frame1 wbData@(Nodeless _ panel tree buttonCreateWS butto
         --loader = loadW `union` loadP
     workspaceDataBehavior <- ioAccumChanges wbData bWorkspaceState renderWorkspaceState
 
-    return ()
+    return workspaceDataBehavior
 
 
 --outputs :: (Frameworks t) => WorkspaceBrowserData -> Frame () -> WorkspaceBrowserInput t -> Moment t (WorkspaceBrowserOutputs t)
 --outputs wbData frame1 (WorkspaceBrowserInput eCreateWS eOpenWS eCreateProject)  =
  -- let
  -- do
-
 
 renderWorkspaceState :: WorkspaceStateChange -> WorkspaceBrowserData ->  IO WorkspaceBrowserData
 renderWorkspaceState (WorkspaceStateChange (OpenWorkspace fp) (WorkspaceState _ prjs)) wbData@(Nodeless _ _ _ _ _ _ _) = do
@@ -121,14 +123,23 @@ renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) wbData@(Noded _ 
 renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) (Nodeless _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
 renderWorkspaceState (WorkspaceStateChange (OpenWorkspace _) _) (Noded _ _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenWorkspace, Noded = should not happen"
 
+browserGetItemPath :: (Frameworks t) => Event t TreeItem -> Behavior t WorkspaceBrowserData -> Moment t (Event t FilePath)
+browserGetItemPath eTree bChange =
+  let bTreeCtrl = getTreeCtrl <$> bChange -- get a Behavior TreeCtrl
+      x = ((,) <$> bTreeCtrl) <@> eTree -- Behavior (TreeCtrl,TreeItem)
+  in treeCtrlGetItemPath `mapIOreaction` x
 
 -- add project node to browser
 loadProject :: WorkspaceBrowserData -> ProjectState -> IO WorkspaceBrowserData
 loadProject wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode projNodes) prj = do
     let fp = projectStateFilePath prj
+    let cabalFp = projectStateCabalFile prj
+    putStrLn $ "FILEPATH: " ++ fp
+    let moduleFiles = projectStateModuleFiles prj
     windowFreeze workspacePanel
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
+    let cabalDirectory = takeDirectory cabalFp
 
      -- add root directory
     --(rootPath,rootName) <- getRootDir
@@ -137,6 +148,14 @@ loadProject wbData@(Noded frame1 workspacePanel workspaceTree buttonCreateWS but
     treeCtrlSetItemPath workspaceTree newProjNode directory
     treeCtrlAddSubDirs workspaceTree newProjNode
     treeCtrlExpand workspaceTree wsNode
+
+    let addModule :: FilePath -> IO ()
+        addModule fp = do
+          newModNode <- treeCtrlAppendItem workspaceTree newProjNode (takeBaseName fp) (imageIndex imgDisk) imageNone objectNull
+          treeCtrlSetItemPath workspaceTree newModNode (cabalDirectory </> fp)
+          treeCtrlAddSubDirs workspaceTree newModNode
+
+    sequence_ $ addModule <$> moduleFiles
 
     let newWbData = Noded frame1 workspacePanel workspaceTree buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode (newProjNode:projNodes)
     layoutWhen newWbData
@@ -234,8 +253,8 @@ treeCtrlSetItemPath :: TreeCtrl a -> TreeItem -> FilePath -> IO ()
 treeCtrlSetItemPath t item path
   = treeCtrlSetItemClientData t item (return ()) path
 
-treeCtrlGetItemPath :: TreeCtrl a -> TreeItem -> IO FilePath
-treeCtrlGetItemPath t item
+treeCtrlGetItemPath :: (TreeCtrl a, TreeItem) -> IO FilePath
+treeCtrlGetItemPath (t,item)
   = do mbpath <- unsafeTreeCtrlGetItemClientData t item
        case mbpath of
          Just path -> return path
@@ -254,7 +273,7 @@ onTreeEvent t l status event
               propagateEvent
       TreeSelChanged item olditem  | treeItemIsOk item
         -> do wxcBeginBusyCursor
-              path <- treeCtrlGetItemPath t item
+              path <- treeCtrlGetItemPath (t,item)
               set status [text := path]
               listCtrlShowDir l path
               wxcEndBusyCursor
@@ -325,7 +344,7 @@ treeCtrlChildrenAddSubDirs t parent
 
 treeCtrlAddSubDirs :: TreeCtrl a -> TreeItem -> IO ()
 treeCtrlAddSubDirs t parent
-  = do fpath <- treeCtrlGetItemPath t parent
+  = do fpath <- treeCtrlGetItemPath (t,parent)
        dirs  <- getSubdirs fpath
        treeCtrlDeleteChildren t parent
        mapM_ addChild dirs

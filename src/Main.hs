@@ -70,7 +70,7 @@ networkDescription = do
     quit  <- menuQuit fileMenu [help := "Quit the ide"]
 
     -- setup workspace browser GUI
-    (eCreateWorkspace,eOpenWorkspace,eCreateProject,eImportProject, wireupWorkspaceBrowser) <- setupWorkspaceBrowser frame1
+    (eCreateWorkspace,eOpenWorkspace,eCreateProject,eImportProject,eWorkspaceTreeEvent, wireupWorkspaceBrowser) <- setupWorkspaceBrowser frame1
 
     --represents the current workspace state
     bWorkspaceState <- currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImportProject
@@ -92,7 +92,7 @@ networkDescription = do
   --  let addPane b c w =  auiManagerAddPane aui w b c >> return ()
 
     -- finish wiring workspace browser GUI
-    _ <- wireupWorkspaceBrowser bWorkspaceState (\wb -> addPane (objectCast $ browserPanel wb) wxLEFT "Workspace Browser")
+    bBrowserState <- wireupWorkspaceBrowser bWorkspaceState (\wb -> addPane (objectCast $ browserPanel wb) wxLEFT "Workspace Browser")
 
 
 
@@ -116,8 +116,13 @@ networkDescription = do
 
     eNewDialogOk <- fileDialogOkEvent New "NewSource.hs" [Haskell] frame1 eNewMenuItem
     eOpenDialogOk <- fileDialogOkEvent Open "" [Haskell] frame1 eOpenMenuItem
+    let isTreeActivated (TreeItemActivated treeItem) = Just treeItem
+        isTreeActivated _ = Nothing
+        eTreeActivated :: Event t TreeItem
+        eTreeActivated =  filterJust $ isTreeActivated <$> eWorkspaceTreeEvent
 
-    let notebookInputs = unions [(NewPage <$> eNewDialogOk),(OpenPage <$> eOpenDialogOk),
+    ebrowserOpenFile <- browserGetItemPath eTreeActivated bBrowserState
+    let notebookInputs = unions [(NewPage <$> eNewDialogOk),(OpenPage <$> (eOpenDialogOk `union` ebrowserOpenFile)),
                                  (Save <$ eSaveMenuItem),(SaveAll <$ eSaveAllMenuItem)]
 
 
@@ -180,14 +185,14 @@ networkDescription = do
         showNBMaybe (Just (SourceNotebookPage _ _ fp) ) = fp
         showNBMaybe _ = ""
 
-        showFilePaths :: IO String
-        showFilePaths = do
-          fps <- readCabalBuildInfos
-          return $ show fps
+   --     showFilePaths :: IO String
+  --      showFilePaths = do
+  --        fps <- readCabalBuildInfos
+  --        return $ show fps
 
     sink status [text :== showNBMaybe <$> bActiveNBPage  ]
 
-    reactimate $ (showFilePaths >>= logWarningMsg) <$ (unions [eDoItMenuButton,eAutoContextItem] )
+   -- reactimate $ (showFilePaths >>= logWarningMsg) <$ (unions [eDoItMenuButton,eAutoContextItem] )
 
 
   --      bTotal :: Behavior t Int

@@ -158,7 +158,7 @@ outputs notebook frame1 input = do
           in  AuiNotebookChange (findPage new pageList) (findPage old pageList)
 
         fromWindowSelection2NotebookPage :: Event t EventAuiNotebook -> Event t AuiNotebookChange
-        fromWindowSelection2NotebookPage e = (makeChange `fmap` bPages) <@> e
+        fromWindowSelection2NotebookPage e = (makeChange <$> bPages) <@> e
 
         filterNotPage :: EventAuiNotebook -> [NotebookPage] -> ([NotebookPage],Maybe NotebookPage)
         filterNotPage ean pages =
