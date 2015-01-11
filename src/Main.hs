@@ -84,15 +84,20 @@ networkDescription = do
     -- [[[[ AuiManager setup
   --  (auiEvent1 :: Event t [(Window (), Int, String)] ,addPanehandler) <- newEvent
 
-
+    browserPaneInfo <- liftIO $ auiPaneInfoCreateDefault
+    browserPaneInfo' <- liftIO $ auiPaneInfoDefaultPane browserPaneInfo
+    browserPaneInfo'' <- liftIO $ auiPaneInfoCaption browserPaneInfo' "Workspace Browser"
+    browserPaneInfo''' <- liftIO $ auiPaneInfoLeft browserPaneInfo''
+    browserPaneInfo'''' <- liftIO $ auiPaneInfoMinSize browserPaneInfo''' (sz 250 0)
 
     aui <- createAuiManager frame1
    -- auiManagerOutputs <- outputs aui []
     let addPane w b c =  withUnderlying aui (\a -> auiManagerAddPane a w b c >> return ())
+        addPaneBrowser w =  withUnderlying aui (\a -> auiManagerAddPaneByPaneInfo a w browserPaneInfo'''' >> return ())
   --  let addPane b c w =  auiManagerAddPane aui w b c >> return ()
-
+        auiManagerUpd = withUnderlying aui auiManagerUpdate
     -- finish wiring workspace browser GUI
-    bBrowserState <- wireupWorkspaceBrowser bWorkspaceState (\wb -> addPane (objectCast $ browserPanel wb) wxLEFT "Workspace Browser")
+    bBrowserState <- wireupWorkspaceBrowser auiManagerUpd bWorkspaceState (\wb -> addPaneBrowser (objectCast $ browserPanel wb))
 
 
 
