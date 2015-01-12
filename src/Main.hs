@@ -44,6 +44,9 @@ mainNetwork = do
 networkDescription :: forall t. Frameworks t => Moment t ()
 networkDescription = do
 
+    cl <- liftIO $ newCabalLock
+    let ?cl = cl
+
     -- Layout
     frame1 <- liftIO $ frameMax [ text  := "Editor for the Functional Interactive Fiction Engine (E-FIFE)"
       , resizeable := True]

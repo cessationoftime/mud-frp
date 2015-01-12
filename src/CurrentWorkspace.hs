@@ -25,56 +25,78 @@ import System.Environment (getArgs)
 import Data.Maybe (fromMaybe,maybeToList, listToMaybe)
 import Utility (readCatch)
 import CabalParsing
+import Control.Exception.Base (SomeException)
+import Data.Either
+import Control.Concurrent (ThreadId)
 --get the first argument if it exists, which is the workspace filePath
 getWorkspaceArg :: IO String
 getWorkspaceArg = do
   args <- liftIO $ getArgs
   return $ fromMaybe "" $ listToMaybe args
 
-readInitialWorkspaceState :: IO WorkspaceState
-readInitialWorkspaceState = getWorkspaceArg >>= readWorkspaceState
+readInitialWorkspaceState :: AsyncInfos -> IO WorkspaceState
+readInitialWorkspaceState triggerInfos = getWorkspaceArg >>= (readWorkspaceState triggerInfos)
+
+type AsyncInfos = FilePath -> IO ThreadId
+getCabalBuildInfosEvent :: (?cl :: CabalLock, Frameworks t) =>
+  Moment t ((FilePath -> IO ThreadId,Event t (Either SomeException (OpResult [CabalBuildInfo]))) )
+getCabalBuildInfosEvent = do
+ (eve,trigger) <- newEvent
+ return (getCabalBuildInfosAsync trigger,eve)
 
 -- | if workspace or project file does not exist, continue as though the contents were empty.
-readWorkspaceState :: FilePath -> IO WorkspaceState
-readWorkspaceState workspaceFilePath = do
+readWorkspaceState :: AsyncInfos -> FilePath -> IO WorkspaceState
+readWorkspaceState triggerInfos workspaceFilePath = do
   putStrLn $ "readWorkspaceState: " ++ workspaceFilePath
   if workspaceFilePath == ""
     then do return $ WorkspaceState "" []
     else do contents <- readCatch workspaceFilePath
             putStrLn $ "readWorkspaceState: " ++ contents ++ " " ++ workspaceFilePath
             let projectList = read contents :: [String]
-            projects <- sequence $ readProjectState <$> projectList
+            projects <- sequence $ (readProjectState triggerInfos) <$> projectList
             return $ WorkspaceState workspaceFilePath projects
 
 -- | read project file (.n6proj) file contents
-readProjectState :: FilePath -> IO ProjectState
-readProjectState fp = do
+readProjectState :: AsyncInfos -> FilePath -> IO ProjectState
+readProjectState triggerInfos fp = do
   cabalFp <- readCatch fp
-  opBuildInfo@(cabalBuildInfos,_) <- getCabalBuildInfos cabalFp
-  return $ ProjectState fp cabalFp opBuildInfo
+  --opBuildInfo@(cabalBuildInfos,_) <- getCabalBuildInfos cabalFp
+  _ <- triggerInfos cabalFp
+  --return $ ProjectState fp cabalFp opBuildInfo
+  return $ ProjectState fp cabalFp ([],[])
 
-currentWorkspaceSetup :: Frameworks t => Frame () -> Event t () -> Event t () -> Event t () -> Event t () -> Moment t (Behavior t WorkspaceStateChange)
+currentWorkspaceSetup :: (?cl :: CabalLock, Frameworks t) =>
+   Frame () -> Event t () -> Event t () -> Event t () -> Event t () -> Moment t (Behavior t WorkspaceStateChange)
 currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImportProject = do
   eCreateProjectFP <- fileDialogOkEvent New "NewProject.cabal" [Cabal] frame1 eCreateProject
   eCreateProjectFP2 <- fileDialogOkEventEx New "NewProject.n6proj" [Project] frame1 eCreateProjectFP
 
   eImportProjectFP <- fileDialogOkEvent Open "ImportedCabal.cabal" [Cabal] frame1 eImportProject
   eImportProjectFP2 <- fileDialogOkEventEx New "ImportedProject.n6proj" [Project] frame1 eImportProjectFP
+  (triggerCabalBuildInfos,eCabalBuildInfos) <- getCabalBuildInfosEvent
 
+  processCabalBuildInfos eCabalBuildInfos
 
   eCreateWorkspaceFP <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eCreateWorkspace
   eOpenWorkspaceFP <- fileDialogOkEvent Open "" [Workspace] frame1 eOpenWorkspace
   eCreateProjectState <- processCreateProjectFP eCreateProjectFP2
   eCreateWorkspaceState <- processCreateWorkspaceFP eCreateWorkspaceFP
-  eImportProjectState <- processImportProjectFP eImportProjectFP2
-  eOpenWorkspaceState <- processOpenWorkspaceFP eOpenWorkspaceFP
-  initialWorkspaceState <- liftIO readInitialWorkspaceState
+  eImportProjectState <- processImportProjectFP triggerCabalBuildInfos eImportProjectFP2
+  eOpenWorkspaceState <- processOpenWorkspaceFP triggerCabalBuildInfos eOpenWorkspaceFP
+  initialWorkspaceState <- liftIO (readInitialWorkspaceState triggerCabalBuildInfos)
 
   let bWorkspaceStateChange = accumB (WorkspaceStateChange WorkspaceChangeInit initialWorkspaceState) (unions [eCreateProjectState,eImportProjectState, eCreateWorkspaceState,eOpenWorkspaceState])
   writeOnChanges `ioOnChanges` bWorkspaceStateChange
   return bWorkspaceStateChange
 
   where
+  processCabalBuildInfos :: Frameworks t =>
+    Event t (Either SomeException (OpResult [CabalBuildInfo])) ->  Moment t ()
+  processCabalBuildInfos eCabalBuildInfos = do
+    reactimate $ (\e -> logWarningMsg (doEither e)) <$> eCabalBuildInfos
+    return ()
+    where
+    doEither = either (\_ -> "processCabalBuildInfos-Left!") (\(cbInfo,_) -> show $ moduleFiles cbInfo)
   processCreateWorkspaceFP :: Frameworks t =>
     Event t FilePath ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processCreateWorkspaceFP eCreateWorkspaceOk = do
@@ -84,9 +106,9 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
     return $ (\fp _ -> WorkspaceStateChange (OpenWorkspace fp) $ WorkspaceState fp []) <$> eCreateWorkspaceOk
 
   processOpenWorkspaceFP ::  Frameworks t =>
-    Event t FilePath -> Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
-  processOpenWorkspaceFP eOpenWorkspaceFP = do
-    workspaceState :: Event t WorkspaceState <- readWorkspaceState `mapIOreaction` eOpenWorkspaceFP
+    AsyncInfos -> Event t FilePath -> Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
+  processOpenWorkspaceFP triggerInfos eOpenWorkspaceFP = do
+    workspaceState :: Event t WorkspaceState <- (readWorkspaceState triggerInfos) `mapIOreaction` eOpenWorkspaceFP
     return $ (\wss@(WorkspaceState fp _) _ -> WorkspaceStateChange (OpenWorkspace fp) wss) <$> workspaceState
   -- create project using NewProjectState because we should delay reading/creation of the cabal file until writeOnChanges
   processCreateProjectFP :: Frameworks t =>
@@ -97,16 +119,17 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
        WorkspaceStateChange (OpenProject cps) (WorkspaceState wfp (cps:prjs))) <$> eCreateProjectOk
 
   processImportProjectFP :: Frameworks t =>
-    Event t (FilePath,FilePath) ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
-  processImportProjectFP eImportProjectOk = do
-    eProjectState :: Event t ProjectState <- readCabalFile `mapIOreaction` eImportProjectOk
+    AsyncInfos -> Event t (FilePath,FilePath) ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
+  processImportProjectFP triggerInfos eImportProjectOk = do
+    eProjectState :: Event t ProjectState <- (readCabalFile triggerInfos) `mapIOreaction` eImportProjectOk
     return $ (\ips@(ImportProjectState fp c _)  (WorkspaceStateChange _ (WorkspaceState wfp prjs)) ->
        WorkspaceStateChange (OpenProject ips) (WorkspaceState wfp (ips:prjs))) <$> eProjectState
     where
-    readCabalFile :: (FilePath,FilePath) -> IO ProjectState
-    readCabalFile (cfp,fp) = do
-      opResult <- liftIO $ getCabalBuildInfos cfp
-      return $ ImportProjectState fp cfp opResult
+    readCabalFile :: AsyncInfos -> (FilePath,FilePath) -> IO ProjectState
+    readCabalFile triggerInfos (cfp,fp) = do
+     -- opResult <- liftIO $ getCabalBuildInfos cfp
+      _ <- triggerInfos cfp
+      return $ ImportProjectState fp cfp ([],[])
 
   -- | write changes to files after (Behavior t WorkspaceStateChange) has changed
   writeOnChanges :: WorkspaceStateChange -> IO ()

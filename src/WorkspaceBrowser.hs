@@ -126,7 +126,8 @@ renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) wbData@(Noded _ 
 renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) (Nodeless _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
 renderWorkspaceState (WorkspaceStateChange (OpenWorkspace _) _) (Noded _ _ _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenWorkspace, Noded = should not happen"
 
-browserGetItemPath :: (Frameworks t) => Event t TreeItem -> Behavior t WorkspaceBrowserData -> Moment t (Event t FilePath)
+browserGetItemPath :: (Frameworks t) =>
+  Event t TreeItem -> Behavior t WorkspaceBrowserData -> Moment t (Event t FilePath)
 browserGetItemPath eTree bChange =
   let bTreeCtrl = getTreeCtrl <$> bChange -- get a Behavior TreeCtrl
       x = ((,) <$> bTreeCtrl) <@> eTree -- Behavior (TreeCtrl,TreeItem)

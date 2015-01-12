@@ -7,7 +7,7 @@ let
 	
   inherit (pkgs) gtk gnome xlibs mesa makeWrapper wxGTK30 haskell;
   inherit (haskellPackagesModified) cabal cabalInstall
-	      executablePath random split filepath reactiveBanana wxdirect wxc wxcore wx reactiveBananaWx buildwrapper Cabal;
+	      executablePath random split filepath reactiveBanana wxdirect wxc wxcore wx reactiveBananaWx buildwrapper Cabal concurrentExtra;
 
 #  inherit (pkgs.gtkLibs) gtkmm;
   unityGtkModule = import ../../unityGtkModule/saucybin.nix { inherit pkgs; };
@@ -21,7 +21,7 @@ in cabal.mkDerivation (self: {
 	  pname = "mud-frp";
 	  version = "0.1.0.0";
 	  src = ../../.;
-	  buildDepends = [ executablePath random split filepath reactiveBanana wxcore wx reactiveBananaWx makeWrapper buildwrapper Cabal];
+	  buildDepends = [ executablePath random split filepath reactiveBanana wxcore wx reactiveBananaWx makeWrapper buildwrapper Cabal concurrentExtra];
 	  extraLibraries = [ xlibs.libX11 wxGTK gtk mesa ];
 
 	  buildTools = [ cabalInstall buildwrapper]; 

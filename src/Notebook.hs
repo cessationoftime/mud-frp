@@ -115,14 +115,16 @@ createControl frame1 inputs setupIO = let input = unite nbcs in do
     createOutputs c frame1 input
 -}
 
-createNotebook :: (Frameworks t)  => Frame () -> NotebookInput t -> (AuiNotebook () -> IO ())  -> Moment t (NotebookOutputs t)
+createNotebook :: (Frameworks t)  =>
+   Frame () -> NotebookInput t -> (AuiNotebook () -> IO ())  -> Moment t (NotebookOutputs t)
 createNotebook frame1 input setupIO = do
     notebook <- liftIO $ newNotebook frame1
     liftIO $ setupIO notebook
     outputs notebook frame1 input
 
 --TODO: can we combine this with creation of the AuiNotebook itself?
-outputs :: Frameworks t => AuiNotebook () -> Frame () -> NotebookInput t -> Moment t (NotebookOutputs t)
+outputs :: Frameworks t =>
+   AuiNotebook () -> Frame () -> NotebookInput t -> Moment t (NotebookOutputs t)
 outputs notebook frame1 input = do
     let eNew = filterJust $ justNewPage <$> input
         eOpen = filterJust $ justOpenPage <$> input
