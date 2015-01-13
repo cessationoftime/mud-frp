@@ -16,6 +16,7 @@
 module EventInputs where
 import RBWX.RBWX
 import CabalParsing
+import Utility
 -------------- Notebook
 
 type NotebookInput t = Event t NotebookChange
@@ -36,13 +37,40 @@ data WorkspaceBrowserChange = WorkspaceStateInit | StateChange WorkspaceState | 
 
 -------------- CurrentWorkspace
 
-data ProjectState = CreateProjectState FilePath String| ImportProjectState FilePath String (OpResult [CabalBuildInfo]) | ProjectState FilePath String (OpResult [CabalBuildInfo]) deriving (Show)
+--newtype ProjectFilePath = ProjectFilePath { unProjectFilePath :: FilePath }
+--newtype WorkspaceFilePath = WorkspaceFilePath { unWorkspaceFilePath :: FilePath }
+
+data ProjectState = CreateProjectState FilePath String |
+                    ImportProjectState FilePath String (OpResult [CabalBuildInfo]) |
+                    ProjectState FilePath String (OpResult [CabalBuildInfo]) deriving (Show)
+                    
 data WorkspaceState = WorkspaceState { workspaceFile :: FilePath, projects :: [ProjectState] } deriving (Show)
 
-data WorkspaceChangeType = WorkspaceChangeInit | OpenWorkspace FilePath | CloseWorkspace | OpenProject ProjectState | CloseProject FilePath
+data WorkspaceChangeType = WorkspaceChangeInit | UpdateBuildInfo (Maybe ProjectState) | OpenWorkspace FilePath | CloseWorkspace | OpenProject ProjectState | CloseProject FilePath
 
 -- | the change that has taken place.  This data should be sent to downstream events.
 data WorkspaceStateChange = WorkspaceStateChange {lastchange :: WorkspaceChangeType, current :: WorkspaceState}
+
+isOpenProject ::  WorkspaceStateChange -> Bool
+isOpenProject (WorkspaceStateChange (OpenProject _) _) = True
+isOpenProject (WorkspaceStateChange _ _) = False
+
+isProject p0 p1 = projectStateFilePath p0 ==  projectStateFilePath p1
+
+isProject' p0 p1 = projectStateCabalFile p0 ==  projectStateCabalFile p1
+
+-- | use cab file to identify project
+isProject'' :: FilePath -> ProjectState -> Bool
+isProject'' p0 p1 = p0 ==  projectStateCabalFile p1
+
+projectStateFilter' :: FilePath -> [ProjectState] -> [ProjectState]
+projectStateFilter' cabfp = filter (isProject'' cabfp)
+
+projectStateFilter :: ProjectState -> [ProjectState] -> [ProjectState]
+projectStateFilter p = filter (isProject p)
+
+projectUpdate :: ProjectState -> [ProjectState] ->[ProjectState]
+projectUpdate p ps = listUpdate isProject p ps
 
 projectStateBuildInfos :: ProjectState -> [CabalBuildInfo]
 projectStateBuildInfos (ProjectState _ _ (buildInfos,_)) = buildInfos
@@ -67,3 +95,6 @@ projectStateFilePath :: ProjectState -> FilePath
 projectStateFilePath (ProjectState fp _ _) = fp
 projectStateFilePath (CreateProjectState fp _) = fp
 projectStateFilePath (ImportProjectState fp _ _) = fp
+
+projectUpdateBuildInfo :: (OpResult [CabalBuildInfo]) -> ProjectState -> ProjectState
+projectUpdateBuildInfo b ps = let (fp,s) = projectStateProjectFile ps in ProjectState fp s b

@@ -118,11 +118,19 @@ wireupWorkspaceBrowser (Nodeless frame1 panel tree _ buttonCreateWS buttonOpenWS
 
 renderWorkspaceState :: WorkspaceStateChange -> WorkspaceBrowserData ->  IO WorkspaceBrowserData
 renderWorkspaceState (WorkspaceStateChange (OpenWorkspace fp) (WorkspaceState _ prjs)) wbData@(Nodeless _ _ _ _ _ _ _ _) = do
---TODO code rendering, loadProject and loadWorkspace when appropriate
   wbData2 <- loadWorkspace wbData fp
   foldM loadProject wbData2 prjs
-renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) wbData@(Noded _ _ _ _ _ _ _ _ _ _) = --TODO code rendering, loadProject and loadWorkspace when appropriate
+renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) wbData@(Noded _ _ _ _ _ _ _ _ _ _) =
   loadProject wbData prj
+renderWorkspaceState (WorkspaceStateChange (UpdateBuildInfo (Just prj)) _) wbData@(Noded _ _ _ _ _ _ _ _ _ _) = do
+  logWarningMsg "renderWorkspaceState UpdateBuildInfo"  
+  loadProject wbData prj
+renderWorkspaceState (WorkspaceStateChange (UpdateBuildInfo (Just prj)) (WorkspaceState fp prjs)) wbData@(Nodeless _ _ _ _ _ _ _ _) = do
+  wbData2 <- loadWorkspace wbData fp
+  foldM loadProject wbData2 prjs
+renderWorkspaceState (WorkspaceStateChange (UpdateBuildInfo Nothing) _) wbData = do
+  logWarningMsg "renderWorkspaceState UpdateBuildInfo: Nothing"
+  return wbData  
 renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) (Nodeless _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
 renderWorkspaceState (WorkspaceStateChange (OpenWorkspace _) _) (Noded _ _ _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenWorkspace, Noded = should not happen"
 

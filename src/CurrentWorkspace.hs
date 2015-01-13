@@ -27,6 +27,7 @@ import Utility (readCatch)
 import CabalParsing
 import Control.Exception.Base (SomeException)
 import Data.Either
+import Data.List (find)
 import Control.Concurrent (ThreadId)
 --get the first argument if it exists, which is the workspace filePath
 getWorkspaceArg :: IO String
@@ -37,12 +38,10 @@ getWorkspaceArg = do
 readInitialWorkspaceState :: AsyncInfos -> IO WorkspaceState
 readInitialWorkspaceState triggerInfos = getWorkspaceArg >>= (readWorkspaceState triggerInfos)
 
+--BuildWrapperState -> BuildWrapper a -> (Either SomeException a -> IO ()) -> IO ThreadId
+
+
 type AsyncInfos = FilePath -> IO ThreadId
-getCabalBuildInfosEvent :: (?cl :: CabalLock, Frameworks t) =>
-  Moment t ((FilePath -> IO ThreadId,Event t (Either SomeException (OpResult [CabalBuildInfo]))) )
-getCabalBuildInfosEvent = do
- (eve,trigger) <- newEvent
- return (getCabalBuildInfosAsync trigger,eve)
 
 -- | if workspace or project file does not exist, continue as though the contents were empty.
 readWorkspaceState :: AsyncInfos -> FilePath -> IO WorkspaceState
@@ -73,9 +72,9 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
 
   eImportProjectFP <- fileDialogOkEvent Open "ImportedCabal.cabal" [Cabal] frame1 eImportProject
   eImportProjectFP2 <- fileDialogOkEventEx New "ImportedProject.n6proj" [Project] frame1 eImportProjectFP
-  (triggerCabalBuildInfos,eCabalBuildInfos) <- getCabalBuildInfosEvent
+  (eCabalBuildInfos,triggerCabalBuildInfos) <- newCabalEvent cabalBuildInfos
 
-  processCabalBuildInfos eCabalBuildInfos
+  eUpdateBuildInfos <- processCabalBuildInfos eCabalBuildInfos
 
   eCreateWorkspaceFP <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eCreateWorkspace
   eOpenWorkspaceFP <- fileDialogOkEvent Open "" [Workspace] frame1 eOpenWorkspace
@@ -85,18 +84,25 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
   eOpenWorkspaceState <- processOpenWorkspaceFP triggerCabalBuildInfos eOpenWorkspaceFP
   initialWorkspaceState <- liftIO (readInitialWorkspaceState triggerCabalBuildInfos)
 
-  let bWorkspaceStateChange = accumB (WorkspaceStateChange WorkspaceChangeInit initialWorkspaceState) (unions [eCreateProjectState,eImportProjectState, eCreateWorkspaceState,eOpenWorkspaceState])
+  let bWorkspaceStateChange = accumB (WorkspaceStateChange WorkspaceChangeInit initialWorkspaceState) (unions [eCreateProjectState,eImportProjectState, eCreateWorkspaceState,eOpenWorkspaceState, eUpdateBuildInfos])
   writeOnChanges `ioOnChanges` bWorkspaceStateChange
   return bWorkspaceStateChange
 
   where
   processCabalBuildInfos :: Frameworks t =>
-    Event t (Either SomeException (OpResult [CabalBuildInfo])) ->  Moment t ()
+    Event t (RunCmdOutput (OpResult [CabalBuildInfo])) ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processCabalBuildInfos eCabalBuildInfos = do
-    reactimate $ (\e -> logWarningMsg (doEither e)) <$> eCabalBuildInfos
-    return ()
+    let (eLeft,eRight) = split eCabalBuildInfos
+    reactimate $ (\e -> logWarningMsg ("processCabalBuildInfos exception: " ++ (show e))) <$> eLeft
+    return $ procRight <$> eRight
     where
-    doEither = either (\_ -> "processCabalBuildInfos-Left!") (\(cbInfo,_) -> show $ moduleFiles cbInfo)
+    procRight (cabfp,buildInfo) (WorkspaceStateChange _ (WorkspaceState fp prjs)) =
+      let pMaybe = find (isProject'' cabfp) prjs
+          pMaybe' = (projectUpdateBuildInfo buildInfo) <$> pMaybe
+          prjsMaybe = (flip projectUpdate prjs) <$> pMaybe'
+          prjs' = fromMaybe prjs prjsMaybe
+      in WorkspaceStateChange (UpdateBuildInfo pMaybe') $ WorkspaceState fp prjs'
+      
   processCreateWorkspaceFP :: Frameworks t =>
     Event t FilePath ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processCreateWorkspaceFP eCreateWorkspaceOk = do
@@ -131,8 +137,11 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
       _ <- triggerInfos cfp
       return $ ImportProjectState fp cfp ([],[])
 
-  -- | write changes to files after (Behavior t WorkspaceStateChange) has changed
+  -- | write changes to files after (Behavior t WorkspaceStateChange) has changed, unless buildInfo is only being updated
   writeOnChanges :: WorkspaceStateChange -> IO ()
+  writeOnChanges (WorkspaceStateChange (UpdateBuildInfo _) _) = do
+    putStrLn "writeOnChanges: UpdateBuildInfo"
+    return ()
   writeOnChanges (WorkspaceStateChange _ ws@(WorkspaceState _ prjs)) = writeWorkspaceFile ws >> writeProjects prjs
 
 {-

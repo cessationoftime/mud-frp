@@ -12,7 +12,7 @@
 --
 -----------------------------------------------------------------------------
 
-module CabalParsing (moduleFiles,getCabalBuildInfos,getCabalBuildInfosAsync, CabalBuildInfo,OpResult, newCabalLock, CabalLock) where
+module CabalParsing (moduleFiles,newCabalEvent,newCabalEvent',RunCmdOutput,cabalBuildInfos, CabalBuildInfo,OpResult, newCabalLock, CabalLock) where
 import Distribution.Compiler
 import Distribution.Package
 import Distribution.PackageDescription
@@ -35,6 +35,8 @@ import Control.Concurrent
 import Control.Exception.Base (SomeException)
 import qualified Control.Concurrent.Lock as L
 import Data.Either
+import qualified Reactive.Banana.Frameworks as RBF
+import qualified Reactive.Banana as RB
 ghc = [7,6,3]
 
 newtype CabalLock = CabalLock { unCabLock :: L.Lock }
@@ -42,53 +44,60 @@ newtype CabalLock = CabalLock { unCabLock :: L.Lock }
 newCabalLock :: IO CabalLock
 newCabalLock = CabalLock <$> L.new
 
+newCabalEvent :: (?cl :: CabalLock, RBF.Frameworks t) =>
+  BuildWrapper a -> RB.Moment t (RB.Event t (RunCmdOutput a), FilePath -> IO ThreadId)
+newCabalEvent = newCabalEvent' initBuildWrapperState
+
+newCabalEvent' :: (?cl :: CabalLock, RBF.Frameworks t) =>
+  (FilePath -> BuildWrapperState) -> BuildWrapper a -> RB.Moment t (RB.Event t (RunCmdOutput a), FilePath -> IO ThreadId)
+newCabalEvent' initialState bwFunc = do
+  (eve,trigger) <- RBF.newEvent
+  let rCmd fp = runCmdAsync (initialState fp) bwFunc trigger
+  return (eve,rCmd)
+
 --type OpResult a=(a,[BWNote])
 --type BuildWrapper=StateT BuildWrapperState IO
 
 moduleFiles :: [CabalBuildInfo] -> [FilePath]
 moduleFiles buildInfos = nub $ concatMap (map snd . BW.cbiModulePaths) buildInfos
 
+initBuildWrapperState cabalFile =
+  let tempFolder = ".dist-buildwrapper"
+      cabalPath = "cabal"
+--      cabalFile = "/home/cvanvranken/Documents/leksahWorkspace/WXDiffCtrl-0.0.1/WXDiffCtrl.cabal"
+      verbosity = Normal
+      cabalFlags = ""
+      cabalOption = []
+      logCabal = True
+  in (BuildWrapperState tempFolder cabalPath cabalFile verbosity cabalFlags cabalOption logCabal)
+
 -- | given a cabalFilePath get the buildInfos for the cabal file
-getCabalBuildInfos :: (?cl :: CabalLock) =>
-   FilePath -> IO (OpResult [CabalBuildInfo])
-getCabalBuildInfos cabalFile = do
-  let tempFolder = ".dist-buildwrapper"
-      cabalPath = "cabal"
---      cabalFile = "/home/cvanvranken/Documents/leksahWorkspace/WXDiffCtrl-0.0.1/WXDiffCtrl.cabal"
-      verbosity = Normal
-      cabalFlags = ""
-      cabalOption = []
-      logCabal = True
+--getCabalBuildInfos :: (?cl :: CabalLock) =>
+--   FilePath -> IO (OpResult [CabalBuildInfo])
+--getCabalBuildInfos cabalFile = 
+--  runCmd (initBuildWrapperState cabalFile) cabalBuildInfos
 
-  runCmd (BuildWrapperState tempFolder cabalPath cabalFile verbosity cabalFlags cabalOption logCabal) cabalBuildInfos
+--getCabalBuildInfosAsync :: (?cl :: CabalLock) =>
+--  (Either SomeException (OpResult [CabalBuildInfo]) -> IO ()) -> FilePath -> IO ThreadId
+--getCabalBuildInfosAsync onTerminate cabalFile =
+--  runCmdAsync (initBuildWrapperState cabalFile) cabalBuildInfos onTerminate
 
-getCabalBuildInfosAsync :: (?cl :: CabalLock) =>
-  (Either SomeException (OpResult [CabalBuildInfo]) -> IO ()) -> FilePath -> IO ThreadId
-getCabalBuildInfosAsync onTerminate cabalFile = do
-  let tempFolder = ".dist-buildwrapper"
-      cabalPath = "cabal"
---      cabalFile = "/home/cvanvranken/Documents/leksahWorkspace/WXDiffCtrl-0.0.1/WXDiffCtrl.cabal"
-      verbosity = Normal
-      cabalFlags = ""
-      cabalOption = []
-      logCabal = True
-  runCmdAsync (BuildWrapperState tempFolder cabalPath cabalFile verbosity cabalFlags cabalOption logCabal) cabalBuildInfos onTerminate
+type RunCmdOutput a = Either SomeException (FilePath,a)
 
--- TODO: lock runCmdAsync, so that commands must queue up if a command is running.
 runCmdAsync :: (?cl :: CabalLock) =>
-   BuildWrapperState -> BuildWrapper a -> (Either SomeException a -> IO ()) -> IO ThreadId
+   BuildWrapperState -> BuildWrapper a -> (RunCmdOutput a -> IO ()) -> IO ThreadId
 runCmdAsync initialState bwFunc onTerminate =
   let rCmd = runCmd initialState bwFunc
   in forkFinally rCmd onTerminate
 
 -- | BuildWrapperState represents a command, take an initial state and evaluate a BuildWrapper function
 runCmd :: (?cl :: CabalLock) =>
-  BuildWrapperState -> BuildWrapper a -> IO a
+  BuildWrapperState -> BuildWrapper a -> IO (FilePath,a)
 runCmd initialState bwFunc= do
   L.acquire . unCabLock $ ?cl
-  resultJson <- evalStateT bwFunc initialState
+  result <- evalStateT bwFunc initialState
   L.release . unCabLock $ ?cl
-  return resultJson
+  return (cabalFile initialState,result)
 
 -- get build info for each component
 cabalBuildInfos :: BuildWrapper (OpResult [CabalBuildInfo])
