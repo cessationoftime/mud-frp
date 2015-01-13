@@ -40,13 +40,13 @@ data WorkspaceBrowserChange = WorkspaceStateInit | StateChange WorkspaceState | 
 --newtype ProjectFilePath = ProjectFilePath { unProjectFilePath :: FilePath }
 --newtype WorkspaceFilePath = WorkspaceFilePath { unWorkspaceFilePath :: FilePath }
 
-data ProjectState = CreateProjectState FilePath String |
-                    ImportProjectState FilePath String (OpResult [CabalBuildInfo]) |
-                    ProjectState FilePath String (OpResult [CabalBuildInfo]) deriving (Show)
+data ProjectState = CreateProjectState FilePath CabalPath |
+                    ImportProjectState FilePath CabalPath (OpResult [CabalBuildInfo]) |
+                    ProjectState FilePath CabalPath (OpResult [CabalBuildInfo]) deriving (Show)
                     
-data WorkspaceState = WorkspaceState { workspaceFile :: FilePath, projects :: [ProjectState] } deriving (Show)
+data WorkspaceState = WorkspaceStateLoading {workspaceFile :: FilePath} | WorkspaceState { workspaceFile :: FilePath, projects :: [ProjectState] } deriving (Show)
 
-data WorkspaceChangeType = WorkspaceChangeInit | UpdateBuildInfo (Maybe ProjectState) | OpenWorkspace FilePath | CloseWorkspace | OpenProject ProjectState | CloseProject FilePath
+data WorkspaceChangeType = WorkspaceChangeInit | OpenWorkspace FilePath | CloseWorkspace | OpenProject FilePath | CloseProject FilePath
 
 -- | the change that has taken place.  This data should be sent to downstream events.
 data WorkspaceStateChange = WorkspaceStateChange {lastchange :: WorkspaceChangeType, current :: WorkspaceState}
@@ -60,10 +60,14 @@ isProject p0 p1 = projectStateFilePath p0 ==  projectStateFilePath p1
 isProject' p0 p1 = projectStateCabalFile p0 ==  projectStateCabalFile p1
 
 -- | use cab file to identify project
-isProject'' :: FilePath -> ProjectState -> Bool
+isProject'' :: CabalPath -> ProjectState -> Bool
 isProject'' p0 p1 = p0 ==  projectStateCabalFile p1
 
-projectStateFilter' :: FilePath -> [ProjectState] -> [ProjectState]
+-- | use proj file to identify project
+isProject''' :: FilePath -> ProjectState -> Bool
+isProject''' p0 p1 = p0 ==  projectStateProjFile p1
+
+projectStateFilter' :: CabalPath -> [ProjectState] -> [ProjectState]
 projectStateFilter' cabfp = filter (isProject'' cabfp)
 
 projectStateFilter :: ProjectState -> [ProjectState] -> [ProjectState]
@@ -80,16 +84,21 @@ projectStateBuildInfos (ImportProjectState _ _ (buildInfos,_)) = buildInfos
 projectStateModuleFiles :: ProjectState -> [FilePath]
 projectStateModuleFiles = moduleFiles . projectStateBuildInfos
 
-projectStateCabalFile :: ProjectState -> FilePath
+projectStateCabalFile :: ProjectState -> CabalPath
 projectStateCabalFile (ProjectState _ cabalFp _) = cabalFp
 projectStateCabalFile (CreateProjectState _ cabalFp) = cabalFp
 projectStateCabalFile (ImportProjectState _ cabalFp _) = cabalFp
 
 -- | get the project filepath and the project file's content
-projectStateProjectFile :: ProjectState -> (FilePath,String)
-projectStateProjectFile (ProjectState fp cabalFp _) = (fp,cabalFp)
-projectStateProjectFile (CreateProjectState fp cabalFp) = (fp,cabalFp)
-projectStateProjectFile (ImportProjectState fp cabalFp _) = (fp,cabalFp)
+projectStateProjFile :: ProjectState -> FilePath
+projectStateProjFile (ProjectState fp _ _) = fp
+projectStateProjFile (CreateProjectState fp _) = fp
+projectStateProjFile (ImportProjectState fp _ _) = fp
+
+projectStateBothFile :: ProjectState -> (FilePath,CabalPath)
+projectStateBothFile (ProjectState fp cabalFp _) = (fp,cabalFp)
+projectStateBothFile (CreateProjectState fp cabalFp) = (fp,cabalFp)
+projectStateBothFile (ImportProjectState fp cabalFp _) = (fp,cabalFp)
 
 projectStateFilePath :: ProjectState -> FilePath
 projectStateFilePath (ProjectState fp _ _) = fp
@@ -97,4 +106,4 @@ projectStateFilePath (CreateProjectState fp _) = fp
 projectStateFilePath (ImportProjectState fp _ _) = fp
 
 projectUpdateBuildInfo :: (OpResult [CabalBuildInfo]) -> ProjectState -> ProjectState
-projectUpdateBuildInfo b ps = let (fp,s) = projectStateProjectFile ps in ProjectState fp s b
+projectUpdateBuildInfo b ps = let (fp,s) = projectStateBothFile ps in ProjectState fp s b

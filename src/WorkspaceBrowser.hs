@@ -19,6 +19,8 @@ import EventInputs
 import qualified Reactive.Banana.Frameworks as Framew
 import CabalParsing
 import Control.Monad (foldM)
+import Data.List (find)
+import Data.Maybe
 newtype WorkspaceBrowser = WorkspaceBrowser (Panel ())
 
 browserPanel :: WorkspaceBrowser -> Panel ()
@@ -117,20 +119,21 @@ wireupWorkspaceBrowser (Nodeless frame1 panel tree _ buttonCreateWS buttonOpenWS
  -- do
 
 renderWorkspaceState :: WorkspaceStateChange -> WorkspaceBrowserData ->  IO WorkspaceBrowserData
-renderWorkspaceState (WorkspaceStateChange (OpenWorkspace fp) (WorkspaceState _ prjs)) wbData@(Nodeless _ _ _ _ _ _ _ _) = do
-  wbData2 <- loadWorkspace wbData fp
-  foldM loadProject wbData2 prjs
-renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) wbData@(Noded _ _ _ _ _ _ _ _ _ _) =
-  loadProject wbData prj
-renderWorkspaceState (WorkspaceStateChange (UpdateBuildInfo (Just prj)) _) wbData@(Noded _ _ _ _ _ _ _ _ _ _) = do
-  logWarningMsg "renderWorkspaceState UpdateBuildInfo"  
-  loadProject wbData prj
-renderWorkspaceState (WorkspaceStateChange (UpdateBuildInfo (Just prj)) (WorkspaceState fp prjs)) wbData@(Nodeless _ _ _ _ _ _ _ _) = do
-  wbData2 <- loadWorkspace wbData fp
-  foldM loadProject wbData2 prjs
-renderWorkspaceState (WorkspaceStateChange (UpdateBuildInfo Nothing) _) wbData = do
-  logWarningMsg "renderWorkspaceState UpdateBuildInfo: Nothing"
-  return wbData  
+renderWorkspaceState (WorkspaceStateChange (OpenWorkspace fp) _) wbData@(Nodeless _ _ _ _ _ _ _ _) = do
+  loadWorkspace wbData fp
+ -- foldM loadProject wbData2 prjs
+renderWorkspaceState (WorkspaceStateChange (OpenProject prjFp) (WorkspaceState _ prjs)) wbData@(Noded _ _ _ _ _ _ _ _ _ _) =
+  let pMaybe = find (isProject''' prjFp) prjs
+  in fromMaybe (return wbData) (loadProject wbData <$> pMaybe)
+--renderWorkspaceState (WorkspaceStateChange (UpdateBuildInfo (Just prj)) _) wbData@(Noded _ _ _ _ _ _ _ _ _ _) = do
+--  logWarningMsg "renderWorkspaceState UpdateBuildInfo"  
+--  loadProject wbData prj
+--renderWorkspaceState (WorkspaceStateChange (UpdateBuildInfo (Just prj)) (WorkspaceState fp prjs)) wbData@(Nodeless _ _ _ _ _ _ _ _) = do
+--  wbData2 <- loadWorkspace wbData fp
+--  foldM loadProject wbData2 prjs
+--renderWorkspaceState (WorkspaceStateChange (UpdateBuildInfo Nothing) _) wbData = do
+--  logWarningMsg "renderWorkspaceState UpdateBuildInfo: Nothing"
+--  return wbData  
 renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) (Nodeless _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
 renderWorkspaceState (WorkspaceStateChange (OpenWorkspace _) _) (Noded _ _ _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenWorkspace, Noded = should not happen"
 
@@ -150,7 +153,7 @@ loadProject wbData@(Noded frame1 workspacePanel workspaceTree auiManagerUpd butt
     windowFreeze workspacePanel
     let baseName = takeBaseName fp
     let directory = takeDirectory fp
-    let cabalDirectory = takeDirectory cabalFp
+    let cabalDirectory = takeDirectory . unCabalPath $ cabalFp
 
      -- add root directory
     --(rootPath,rootName) <- getRootDir
@@ -165,7 +168,8 @@ loadProject wbData@(Noded frame1 workspacePanel workspaceTree auiManagerUpd butt
           newModNode <- treeCtrlAppendItem workspaceTree newProjNode (takeBaseName fp) (imageIndex imgDisk) imageNone objectNull
           treeCtrlSetItemPath workspaceTree newModNode (cabalDirectory </> fp)
           treeCtrlAddSubDirs workspaceTree newModNode
-
+          
+    logWarningMsg $ show moduleFiles
     sequence_ $ addModule <$> moduleFiles
 
     let newWbData = Noded frame1 workspacePanel workspaceTree auiManagerUpd buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode (newProjNode:projNodes)

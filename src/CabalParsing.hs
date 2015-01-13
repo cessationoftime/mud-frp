@@ -12,7 +12,7 @@
 --
 -----------------------------------------------------------------------------
 
-module CabalParsing (moduleFiles,newCabalEvent,newCabalEvent',RunCmdOutput,cabalBuildInfos, CabalBuildInfo,OpResult, newCabalLock, CabalLock) where
+module CabalParsing (CabalPath,newCabalPath,unCabalPath,moduleFiles,newCabalEvent,newCabalEvent',RunCmdOutput,RunCmdTrigger,cabalBuildInfos, CabalBuildInfo,OpResult, newCabalLock, CabalLock) where
 import Distribution.Compiler
 import Distribution.Package
 import Distribution.PackageDescription
@@ -26,7 +26,7 @@ import Distribution.ModuleName
 import Data.Maybe
 --import Data.Aeson
 import Control.Monad.State
-import Data.List (nub)
+import Data.List (nub,isSuffixOf)
 import Control.Applicative ((<$>))
 import Language.Haskell.BuildWrapper.Cabal (CabalBuildInfo)
 import Language.Haskell.BuildWrapper.Base (Verbosity(..),BuildWrapperState(..), WhichCabal(..),OpResult,BuildWrapper)
@@ -40,19 +40,24 @@ import qualified Reactive.Banana as RB
 ghc = [7,6,3]
 
 newtype CabalLock = CabalLock { unCabLock :: L.Lock }
+newtype CabalPath = CabalPath { unCabalPath :: FilePath } deriving (Eq,Show)
 
 newCabalLock :: IO CabalLock
 newCabalLock = CabalLock <$> L.new
 
+newCabalPath :: FilePath -> CabalPath
+newCabalPath fp | ".cabal" `isSuffixOf` fp = CabalPath fp
+newCabalPath fp = error $ fp ++ " is not a valid CabalPath"
+
 newCabalEvent :: (?cl :: CabalLock, RBF.Frameworks t) =>
-  BuildWrapper a -> RB.Moment t (RB.Event t (RunCmdOutput a), FilePath -> IO ThreadId)
+  BuildWrapper b -> RB.Moment t (RB.Event t (RunCmdOutput a b), CabalPath -> a -> IO ThreadId)
 newCabalEvent = newCabalEvent' initBuildWrapperState
 
 newCabalEvent' :: (?cl :: CabalLock, RBF.Frameworks t) =>
-  (FilePath -> BuildWrapperState) -> BuildWrapper a -> RB.Moment t (RB.Event t (RunCmdOutput a), FilePath -> IO ThreadId)
+  (CabalPath -> BuildWrapperState) -> BuildWrapper b -> RB.Moment t (RB.Event t (RunCmdOutput a b), CabalPath -> a -> IO ThreadId)
 newCabalEvent' initialState bwFunc = do
   (eve,trigger) <- RBF.newEvent
-  let rCmd fp = runCmdAsync (initialState fp) bwFunc trigger
+  let rCmd fp passThruData = runCmdAsync (initialState fp) passThruData bwFunc trigger
   return (eve,rCmd)
 
 --type OpResult a=(a,[BWNote])
@@ -69,7 +74,7 @@ initBuildWrapperState cabalFile =
       cabalFlags = ""
       cabalOption = []
       logCabal = True
-  in (BuildWrapperState tempFolder cabalPath cabalFile verbosity cabalFlags cabalOption logCabal)
+  in (BuildWrapperState tempFolder cabalPath (unCabalPath cabalFile) verbosity cabalFlags cabalOption logCabal)
 
 -- | given a cabalFilePath get the buildInfos for the cabal file
 --getCabalBuildInfos :: (?cl :: CabalLock) =>
@@ -82,22 +87,23 @@ initBuildWrapperState cabalFile =
 --getCabalBuildInfosAsync onTerminate cabalFile =
 --  runCmdAsync (initBuildWrapperState cabalFile) cabalBuildInfos onTerminate
 
-type RunCmdOutput a = Either SomeException (FilePath,a)
+type RunCmdTrigger a = CabalPath -> a -> IO ThreadId
+type RunCmdOutput a b = Either SomeException (CabalPath,a,b)
 
 runCmdAsync :: (?cl :: CabalLock) =>
-   BuildWrapperState -> BuildWrapper a -> (RunCmdOutput a -> IO ()) -> IO ThreadId
-runCmdAsync initialState bwFunc onTerminate =
-  let rCmd = runCmd initialState bwFunc
+   BuildWrapperState -> a -> BuildWrapper b -> (RunCmdOutput a b -> IO ()) -> IO ThreadId
+runCmdAsync initialState passThruData bwFunc onTerminate =
+  let rCmd = runCmd initialState passThruData bwFunc
   in forkFinally rCmd onTerminate
 
 -- | BuildWrapperState represents a command, take an initial state and evaluate a BuildWrapper function
 runCmd :: (?cl :: CabalLock) =>
-  BuildWrapperState -> BuildWrapper a -> IO (FilePath,a)
-runCmd initialState bwFunc= do
+  BuildWrapperState -> a -> BuildWrapper b -> IO (CabalPath,a,b)
+runCmd initialState passThruData bwFunc= do
   L.acquire . unCabLock $ ?cl
   result <- evalStateT bwFunc initialState
   L.release . unCabLock $ ?cl
-  return (cabalFile initialState,result)
+  return (newCabalPath $ cabalFile initialState,passThruData,result)
 
 -- get build info for each component
 cabalBuildInfos :: BuildWrapper (OpResult [CabalBuildInfo])
