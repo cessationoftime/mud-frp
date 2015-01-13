@@ -13,3 +13,6 @@
 # Install this version of wx/wxcore: 
 # nix-env -f default.nix -iA wx
 # nix-env -f default.nix -iA wxcore
+
+# Install random haskell packages from haskellPackagesModified
+# nix-env -f default.nix -iA haskellPackagesModified.reactiveBananaWx

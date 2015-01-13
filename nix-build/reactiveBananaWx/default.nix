@@ -6,7 +6,7 @@ inherit (haskellPackagesModified) reactiveBanana;
 
 in cabal.mkDerivation (self: {
 pname = "reactive-banana-wx";
-version = "0.8.0.1";
+version = "0.8.0.4";
 src = ../../../reactive-banana/reactive-banana-wx;
 isLibrary = true;
 isExecutable = true;

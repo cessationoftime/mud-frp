@@ -35,25 +35,25 @@ getWorkspaceArg = do
   args <- liftIO $ getArgs
   return $ fromMaybe "" $ listToMaybe args
 
-readInitialWorkspaceState :: AsyncInfos -> IO WorkspaceState
-readInitialWorkspaceState triggerInfos = getWorkspaceArg >>= (readWorkspaceState triggerInfos)
+readInitialWorkspaceState :: TriggerOpenProject -> IO WorkspaceState
+readInitialWorkspaceState triggerOpenProject = getWorkspaceArg >>= (readWorkspaceState triggerOpenProject)
 
 --BuildWrapperState -> BuildWrapper a -> (Either SomeException a -> IO ()) -> IO ThreadId
 
-
+type TriggerOpenProject = FilePath -> IO ()
 type AsyncInfos = FilePath -> IO ThreadId
 
 -- | if workspace or project file does not exist, continue as though the contents were empty.
-readWorkspaceState :: AsyncInfos -> FilePath -> IO WorkspaceState
-readWorkspaceState triggerInfos workspaceFilePath = do
+readWorkspaceState :: TriggerOpenProject -> FilePath -> IO WorkspaceState
+readWorkspaceState triggerOpenProject workspaceFilePath = do
   putStrLn $ "readWorkspaceState: " ++ workspaceFilePath
   if workspaceFilePath == ""
     then do return $ WorkspaceState "" []
     else do contents <- readCatch workspaceFilePath
-            putStrLn $ "readWorkspaceState: " ++ contents ++ " " ++ workspaceFilePath
             let projectList = read contents :: [String]
-            projects <- sequence $ (readProjectState triggerInfos) <$> projectList
-            return $ WorkspaceState workspaceFilePath projects
+            putStrLn $ "readWorkspaceState: " ++ contents ++ " : " ++ workspaceFilePath ++ " : " ++ show projectList
+            sequence $ (triggerOpenProject) <$> projectList
+            return $ WorkspaceState workspaceFilePath []
 
 -- | read project file (.n6proj) file contents
 readProjectState :: AsyncInfos -> FilePath -> IO ProjectState
@@ -64,6 +64,13 @@ readProjectState triggerInfos fp = do
   --return $ ProjectState fp cabalFp opBuildInfo
   return $ ProjectState fp cabalFp ([],[])
 
+-- | Left import project (projFp,cabalFP), Right open project
+data PendingOpen = ImportPending (FilePath,FilePath) | OpenPending (FilePath,FilePath)
+
+pendingOpenCabal :: PendingOpen -> FilePath
+pendingOpenCabal (ImportPending (_,cabalFP)) = cabalFP
+pendingOpenCabal (OpenPending (_,cabalFP)) = cabalFP
+
 currentWorkspaceSetup :: (?cl :: CabalLock, Frameworks t) =>
    Frame () -> Event t () -> Event t () -> Event t () -> Event t () -> Moment t (Behavior t WorkspaceStateChange)
 currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImportProject = do
@@ -72,27 +79,45 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
 
   eImportProjectFP <- fileDialogOkEvent Open "ImportedCabal.cabal" [Cabal] frame1 eImportProject
   eImportProjectFP2 <- fileDialogOkEventEx New "ImportedProject.n6proj" [Project] frame1 eImportProjectFP
-  (eCabalBuildInfos,triggerCabalBuildInfos) <- newCabalEvent cabalBuildInfos
 
-  eUpdateBuildInfos <- processCabalBuildInfos eCabalBuildInfos
+  --3
+  (eFinalizeOpenProject,triggerFinalizeOpenProject) <- newCabalEvent cabalBuildInfos
+  (eOpenProject,triggerOpenProject) <- newEvent
+
+  reactimate $ (\e -> logWarningMsg ("eOpenProject: " ++ (show e))) <$> eOpenProject
+
+  eOpenProjectRead <- readCatch `ioOnEvent2` eOpenProject  -- get the cabalFp from the n6proj
+
+  --1
+  let ePendingOpen = ( ImportPending <$> eImportProjectFP2) `union` (OpenPending <$> eOpenProjectRead)
+  processPendingOpenProject triggerFinalizeOpenProject ePendingOpen
+  --2
+  --eImportProjectState <- processImportProjectFP triggerFinalizeOpenProject
+  --eCreateProjectState <- processCreateProjectFP
+
+  --4
+  eFinalOpenProject <- processFinalizeOpenProject eFinalizeOpenProject
+
+  --TODO: pass triggerOpenProject to processOpenWorkspace
 
   eCreateWorkspaceFP <- fileDialogOkEvent New "NewWorkspace.n6" [Workspace] frame1 eCreateWorkspace
   eOpenWorkspaceFP <- fileDialogOkEvent Open "" [Workspace] frame1 eOpenWorkspace
-  eCreateProjectState <- processCreateProjectFP eCreateProjectFP2
-  eCreateWorkspaceState <- processCreateWorkspaceFP eCreateWorkspaceFP
-  eImportProjectState <- processImportProjectFP triggerCabalBuildInfos eImportProjectFP2
-  eOpenWorkspaceState <- processOpenWorkspaceFP triggerCabalBuildInfos eOpenWorkspaceFP
-  initialWorkspaceState <- liftIO (readInitialWorkspaceState triggerCabalBuildInfos)
+  eOpenWorkspaceState <- processOpenWorkspaceFP triggerOpenProject eOpenWorkspaceFP
 
-  let bWorkspaceStateChange = accumB (WorkspaceStateChange WorkspaceChangeInit initialWorkspaceState) (unions [eCreateProjectState,eImportProjectState, eCreateWorkspaceState,eOpenWorkspaceState, eUpdateBuildInfos])
+  eCreateWorkspaceState <- processCreateWorkspaceFP eCreateWorkspaceFP
+
+  initialWorkspaceState <- liftIO (readInitialWorkspaceState triggerOpenProject)
+
+  let bWorkspaceStateChange = accumB (WorkspaceStateChange WorkspaceChangeInit initialWorkspaceState) (unions [eOpenWorkspaceState, eCreateWorkspaceState,eFinalOpenProject])
   writeOnChanges `ioOnChanges` bWorkspaceStateChange
   return bWorkspaceStateChange
 
   where
-  processCabalBuildInfos :: Frameworks t =>
+  processFinalizeOpenProject :: Frameworks t =>
     Event t (RunCmdOutput (OpResult [CabalBuildInfo])) ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
-  processCabalBuildInfos eCabalBuildInfos = do
+  processFinalizeOpenProject eCabalBuildInfos = do
     let (eLeft,eRight) = split eCabalBuildInfos
+    reactimate $ (\e -> logWarningMsg ("processCabalBuildInfos success: " ++ (show e))) <$> eRight
     reactimate $ (\e -> logWarningMsg ("processCabalBuildInfos exception: " ++ (show e))) <$> eLeft
     return $ procRight <$> eRight
     where
@@ -101,8 +126,9 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
           pMaybe' = (projectUpdateBuildInfo buildInfo) <$> pMaybe
           prjsMaybe = (flip projectUpdate prjs) <$> pMaybe'
           prjs' = fromMaybe prjs prjsMaybe
-      in WorkspaceStateChange (UpdateBuildInfo pMaybe') $ WorkspaceState fp prjs'
-      
+          --TODO: feed the rest of the pending info through the cabal runCMD
+      in WorkspaceStateChange (OpenProject pMaybe') $ WorkspaceState fp prjs'
+
   processCreateWorkspaceFP :: Frameworks t =>
     Event t FilePath ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processCreateWorkspaceFP eCreateWorkspaceOk = do
@@ -112,9 +138,9 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
     return $ (\fp _ -> WorkspaceStateChange (OpenWorkspace fp) $ WorkspaceState fp []) <$> eCreateWorkspaceOk
 
   processOpenWorkspaceFP ::  Frameworks t =>
-    AsyncInfos -> Event t FilePath -> Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
-  processOpenWorkspaceFP triggerInfos eOpenWorkspaceFP = do
-    workspaceState :: Event t WorkspaceState <- (readWorkspaceState triggerInfos) `mapIOreaction` eOpenWorkspaceFP
+    TriggerOpenProject -> Event t FilePath -> Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
+  processOpenWorkspaceFP triggerOpenProject eOpenWorkspaceFP = do
+    workspaceState :: Event t WorkspaceState <- (readWorkspaceState triggerOpenProject) `mapIOreaction` eOpenWorkspaceFP
     return $ (\wss@(WorkspaceState fp _) _ -> WorkspaceStateChange (OpenWorkspace fp) wss) <$> workspaceState
   -- create project using NewProjectState because we should delay reading/creation of the cabal file until writeOnChanges
   processCreateProjectFP :: Frameworks t =>
@@ -136,6 +162,14 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
      -- opResult <- liftIO $ getCabalBuildInfos cfp
       _ <- triggerInfos cfp
       return $ ImportProjectState fp cfp ([],[])
+
+  -- | trigger cabalEvent:cabalBuildInfos, which then finalizes opening the Project
+  processPendingOpenProject :: Frameworks t =>
+    AsyncInfos -> Event t PendingOpen ->  Moment t ()
+  processPendingOpenProject triggerFinalizeOpenProject ePendingOpen = do
+    let ePendingCabalFP = pendingOpenCabal <$> ePendingOpen
+    _ <- (\fp -> triggerFinalizeOpenProject fp >> return ()) `ioOnEvent` ePendingCabalFP
+    return ()
 
   -- | write changes to files after (Behavior t WorkspaceStateChange) has changed, unless buildInfo is only being updated
   writeOnChanges :: WorkspaceStateChange -> IO ()
