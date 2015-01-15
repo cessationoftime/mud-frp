@@ -28,7 +28,7 @@ import CabalParsing
 import Control.Exception.Base (SomeException)
 import Data.Either
 import Data.List (find)
-import Control.Concurrent (ThreadId)
+import Control.Concurrent (ThreadId, takeMVar)
 
 
 --get the first argument if it exists, which is the workspace filePath
@@ -77,6 +77,14 @@ pendingOpenTuple :: PendingOpen -> (FilePath,CabalPath)
 pendingOpenTuple (ImportPending (fp,cabalFP)) = (fp,cabalFP)
 pendingOpenTuple (OpenPending (fp,cabalFP)) = (fp,cabalFP)
 
+newCabalAsyncEvent ::  (?cl :: CabalLock ,Frameworks t) =>
+  Frame ()  -> Int -> BuildWrapper b -> Moment t (Event t (RunCmdOutput a b),CabalPath -> a -> IO ThreadId)
+newCabalAsyncEvent frame1 eveId bwFunc = do
+  (eCabalThread,triggerCabalThread) <- newThreadAsyncEvent eveId frame1
+  (mvarFinalizeOpenProject,triggerFinalizeOpenProject) <- newCabalEvent triggerCabalThread bwFunc
+  mvardata <- (const $ takeMVar mvarFinalizeOpenProject) `mapIOreaction` eCabalThread
+  return (mvardata,triggerFinalizeOpenProject)
+
 currentWorkspaceSetup :: (?cl :: CabalLock, Frameworks t) =>
    Frame () -> Event t () -> Event t () -> Event t () -> Event t () -> Moment t (Behavior t WorkspaceStateChange)
 currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImportProject = do
@@ -86,8 +94,8 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
   eImportProjectFP <- fileDialogOkEvent Open "ImportedCabal.cabal" [Cabal] frame1 eImportProject
   eImportProjectFP2 <- fileDialogOkEventEx New "ImportedProject.n6proj" [Project] frame1 (newCabalPath <$> eImportProjectFP)
 
-    --3
-  (eFinalizeOpenProject,triggerFinalizeOpenProject) <- newCabalEvent (threadAsyncTrigger frame1) cabalBuildInfos
+  (eFinalizeOpenProject,triggerFinalizeOpenProject) <- newCabalAsyncEvent frame1 cabalBuildInfoAsyncEventId cabalBuildInfos
+
   (eOpenProject,triggerOpenProject) <- newEvent
 
   eOpenProjectRead <- readCatch `ioOnEvent2` eOpenProject  -- get the cabalFp from the n6proj

@@ -40,16 +40,18 @@ frameMax props = frameEx (frameDefaultStyle .+. wxMAXIMIZE) props objectNull
 
 newtype ThreadAsyncTrigger = ThreadAsyncTrigger { unThreadAsyncTrigger :: IO ()}
 
-threadAsyncEventId = wxID_HIGHEST+1 -- the custom event ID
-threadAsyncEvent :: Event (Window a) (IO ())
-threadAsyncEvent = newEvent "threadAsyncEvent" threadAsyncGetOnEvent threadAsyncOnEvent
+cabalBuildInfoAsyncEventId = wxID_HIGHEST+777 -- the custom event ID
 
-threadAsyncOnEvent win io = evtHandlerOnMenuCommand win threadAsyncEventId io
-threadAsyncGetOnEvent win  = evtHandlerGetOnMenuCommand win threadAsyncEventId
 
-threadAsyncTrigger :: Frame () -> ThreadAsyncTrigger
-threadAsyncTrigger frame = ThreadAsyncTrigger $ createAsyncTrigger >>= (evtHandlerAddPendingEvent frame)
- where createAsyncTrigger = commandEventCreate wxEVT_COMMAND_MENU_SELECTED threadAsyncEventId
+threadAsyncEvent :: Int -> (Event (Window a) (IO ()),Frame () -> ThreadAsyncTrigger)
+threadAsyncEvent eveId = (newEvent "threadAsyncEvent" (threadAsyncGetOnEvent eveId) (threadAsyncOnEvent eveId),threadAsyncTrigger eveId)
+  where
+  threadAsyncOnEvent eveId win io = evtHandlerOnMenuCommand win eveId io
+  threadAsyncGetOnEvent eveId win  = evtHandlerGetOnMenuCommand win eveId
+
+  threadAsyncTrigger :: Int -> Frame () -> ThreadAsyncTrigger
+  threadAsyncTrigger eveId frame = ThreadAsyncTrigger $ createAsyncTrigger >>= (evtHandlerAddPendingEvent frame)
+    where createAsyncTrigger = commandEventCreate wxEVT_COMMAND_MENU_SELECTED eveId
 
 
  {-

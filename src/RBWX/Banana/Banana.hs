@@ -22,7 +22,8 @@ module RBWX.Banana.WX.Additions,
   eClosedNotebookPage,
   eChangedNotebookPage,
   eChangingNotebookPage,
-  eEventTreeCtrl
+  eEventTreeCtrl,
+  newThreadAsyncEvent
   --eNotebookPage,
   --eActiveNotebookPage,
   --bActiveNotebookPage
@@ -48,3 +49,9 @@ eChangingNotebookPage notebook =  event1 notebook auiNotebookOnPageChangingEvent
 
 eEventTreeCtrl ::  Frameworks t => Core.TreeCtrl a -> Moment t (Event t EventTree)
 eEventTreeCtrl treeCtrl =  event1 treeCtrl treeOnTreeEvent
+
+newThreadAsyncEvent :: Frameworks t => Int -> Frame () -> Moment t (Event t (),ThreadAsyncTrigger)
+newThreadAsyncEvent eveId frame = do
+  let (eve,trigger) = threadAsyncEvent eveId
+  evet <- event0 frame eve
+  return (evet,trigger frame)

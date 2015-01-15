@@ -12,7 +12,7 @@
 --
 -----------------------------------------------------------------------------
 
-module CabalParsing (CabalPath,newCabalPath,unCabalPath,moduleFiles,newCabalEvent,newCabalEvent',RunCmdOutput,RunCmdTrigger,cabalBuildInfos, CabalBuildInfo,OpResult, newCabalLock, CabalLock) where
+module CabalParsing (BuildWrapper,CabalPath,newCabalPath,unCabalPath,moduleFiles,newCabalEvent,newCabalEvent',RunCmdOutput,RunCmdTrigger,cabalBuildInfos, CabalBuildInfo,OpResult, newCabalLock, CabalLock) where
 import Distribution.Compiler
 import Distribution.Package
 import Distribution.PackageDescription
