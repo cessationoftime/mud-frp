@@ -29,6 +29,8 @@ import Control.Exception.Base (SomeException)
 import Data.Either
 import Data.List (find)
 import Control.Concurrent (ThreadId)
+
+
 --get the first argument if it exists, which is the workspace filePath
 getWorkspaceArg :: IO String
 getWorkspaceArg = do
@@ -85,10 +87,8 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
   eImportProjectFP2 <- fileDialogOkEventEx New "ImportedProject.n6proj" [Project] frame1 (newCabalPath <$> eImportProjectFP)
 
     --3
-  (eFinalizeOpenProject,triggerFinalizeOpenProject) <- newCabalEvent cabalBuildInfos
+  (eFinalizeOpenProject,triggerFinalizeOpenProject) <- newCabalEvent (threadAsyncTrigger frame1) cabalBuildInfos
   (eOpenProject,triggerOpenProject) <- newEvent
-
-  reactimate $ (\e -> logWarningMsg ("eOpenProject: " ++ (show e))) <$> eOpenProject
 
   eOpenProjectRead <- readCatch `ioOnEvent2` eOpenProject  -- get the cabalFp from the n6proj
   let eOpenProjectRead' = (\x -> (fst x,newCabalPath $ snd x)) <$> eOpenProjectRead
@@ -115,7 +115,7 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
   let bWorkspaceStateChange = accumB (WorkspaceStateChange WorkspaceChangeInit $ WorkspaceState "" [] ) (unions [eOpenWorkspaceState, eCreateWorkspaceState,eFinalOpenProject])
 
   writeOnChanges `ioOnChanges` bWorkspaceStateChange
-  
+
   return bWorkspaceStateChange
 
   where
@@ -133,7 +133,7 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
     procRight (cabfp,projFp,buildInfo) (WorkspaceStateChange _ (WorkspaceStateLoading fp)) =
       let p = ProjectState projFp cabfp buildInfo
       in WorkspaceStateChange (OpenProject projFp) $ WorkspaceState fp [p]
-        
+
   processCreateWorkspaceFP :: Frameworks t =>
     Event t FilePath ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processCreateWorkspaceFP eCreateWorkspaceOk = do
@@ -149,7 +149,7 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
     changeState wss@(WorkspaceStateLoading fp) _ = WorkspaceStateChange (OpenWorkspace fp) wss
     -- | if workspace or project file does not exist, continue as though the contents were empty.
 
-    
+
   -- create project using NewProjectState because we should delay reading/creation of the cabal file until writeOnChanges
  -- processCreateProjectFP :: Frameworks t =>
  --   Event t (FilePath,FilePath) ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))

@@ -121,21 +121,13 @@ wireupWorkspaceBrowser (Nodeless frame1 panel tree _ buttonCreateWS buttonOpenWS
 renderWorkspaceState :: WorkspaceStateChange -> WorkspaceBrowserData ->  IO WorkspaceBrowserData
 renderWorkspaceState (WorkspaceStateChange (OpenWorkspace fp) _) wbData@(Nodeless _ _ _ _ _ _ _ _) = do
   loadWorkspace wbData fp
- -- foldM loadProject wbData2 prjs
 renderWorkspaceState (WorkspaceStateChange (OpenProject prjFp) (WorkspaceState _ prjs)) wbData@(Noded _ _ _ _ _ _ _ _ _ _) =
   let pMaybe = find (isProject''' prjFp) prjs
   in fromMaybe (return wbData) (loadProject wbData <$> pMaybe)
---renderWorkspaceState (WorkspaceStateChange (UpdateBuildInfo (Just prj)) _) wbData@(Noded _ _ _ _ _ _ _ _ _ _) = do
---  logWarningMsg "renderWorkspaceState UpdateBuildInfo"  
---  loadProject wbData prj
---renderWorkspaceState (WorkspaceStateChange (UpdateBuildInfo (Just prj)) (WorkspaceState fp prjs)) wbData@(Nodeless _ _ _ _ _ _ _ _) = do
---  wbData2 <- loadWorkspace wbData fp
---  foldM loadProject wbData2 prjs
---renderWorkspaceState (WorkspaceStateChange (UpdateBuildInfo Nothing) _) wbData = do
---  logWarningMsg "renderWorkspaceState UpdateBuildInfo: Nothing"
---  return wbData  
-renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) (Nodeless _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
-renderWorkspaceState (WorkspaceStateChange (OpenWorkspace _) _) (Noded _ _ _ _ _ _ _ _ _ _) = error "renderWorkspaceState: OpenWorkspace, Noded = should not happen"
+renderWorkspaceState (WorkspaceStateChange (OpenProject prj) _) (Nodeless _ _ _ _ _ _ _ _) =
+  error "renderWorkspaceState: OpenProject, Nodeless = should not happen"
+renderWorkspaceState (WorkspaceStateChange (OpenWorkspace _) _) (Noded _ _ _ _ _ _ _ _ _ _) =
+  error "renderWorkspaceState: OpenWorkspace, Noded = should not happen"
 
 browserGetItemPath :: (Frameworks t) =>
   Event t TreeItem -> Behavior t WorkspaceBrowserData -> Moment t (Event t FilePath)
@@ -168,7 +160,7 @@ loadProject wbData@(Noded frame1 workspacePanel workspaceTree auiManagerUpd butt
           newModNode <- treeCtrlAppendItem workspaceTree newProjNode (takeBaseName fp) (imageIndex imgDisk) imageNone objectNull
           treeCtrlSetItemPath workspaceTree newModNode (cabalDirectory </> fp)
           treeCtrlAddSubDirs workspaceTree newModNode
-          
+
     logWarningMsg $ show moduleFiles
     sequence_ $ addModule <$> moduleFiles
 

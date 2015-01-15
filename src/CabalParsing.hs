@@ -37,6 +37,7 @@ import qualified Control.Concurrent.Lock as L
 import Data.Either
 import qualified Reactive.Banana.Frameworks as RBF
 import qualified Reactive.Banana as RB
+import RBWX.RBWX (ThreadAsyncTrigger, unThreadAsyncTrigger)
 ghc = [7,6,3]
 
 newtype CabalLock = CabalLock { unCabLock :: L.Lock }
@@ -50,15 +51,15 @@ newCabalPath fp | ".cabal" `isSuffixOf` fp = CabalPath fp
 newCabalPath fp = error $ fp ++ " is not a valid CabalPath"
 
 newCabalEvent :: (?cl :: CabalLock, RBF.Frameworks t) =>
-  BuildWrapper b -> RB.Moment t (RB.Event t (RunCmdOutput a b), CabalPath -> a -> IO ThreadId)
+  ThreadAsyncTrigger -> BuildWrapper b -> RB.Moment t (MVar (RunCmdOutput a b),CabalPath -> a -> IO ThreadId)
 newCabalEvent = newCabalEvent' initBuildWrapperState
 
 newCabalEvent' :: (?cl :: CabalLock, RBF.Frameworks t) =>
-  (CabalPath -> BuildWrapperState) -> BuildWrapper b -> RB.Moment t (RB.Event t (RunCmdOutput a b), CabalPath -> a -> IO ThreadId)
-newCabalEvent' initialState bwFunc = do
-  (eve,trigger) <- RBF.newEvent
-  let rCmd fp passThruData = runCmdAsync (initialState fp) passThruData bwFunc trigger
-  return (eve,rCmd)
+  (CabalPath -> BuildWrapperState) -> ThreadAsyncTrigger  -> BuildWrapper b -> RB.Moment t (MVar (RunCmdOutput a b),CabalPath -> a -> IO ThreadId)
+newCabalEvent' initialState wxEvtTrigger bwFunc = do
+  mvar <- liftIO newEmptyMVar
+  let rCmd fp passThruData = runCmdAsync (initialState fp) passThruData bwFunc mvar wxEvtTrigger
+  return (mvar,rCmd)
 
 --type OpResult a=(a,[BWNote])
 --type BuildWrapper=StateT BuildWrapperState IO
@@ -79,7 +80,7 @@ initBuildWrapperState cabalFile =
 -- | given a cabalFilePath get the buildInfos for the cabal file
 --getCabalBuildInfos :: (?cl :: CabalLock) =>
 --   FilePath -> IO (OpResult [CabalBuildInfo])
---getCabalBuildInfos cabalFile = 
+--getCabalBuildInfos cabalFile =
 --  runCmd (initBuildWrapperState cabalFile) cabalBuildInfos
 
 --getCabalBuildInfosAsync :: (?cl :: CabalLock) =>
@@ -90,11 +91,21 @@ initBuildWrapperState cabalFile =
 type RunCmdTrigger a = CabalPath -> a -> IO ThreadId
 type RunCmdOutput a b = Either SomeException (CabalPath,a,b)
 
+
+
 runCmdAsync :: (?cl :: CabalLock) =>
-   BuildWrapperState -> a -> BuildWrapper b -> (RunCmdOutput a b -> IO ()) -> IO ThreadId
-runCmdAsync initialState passThruData bwFunc onTerminate =
+   BuildWrapperState -> a -> BuildWrapper b -> MVar (RunCmdOutput a b) -> ThreadAsyncTrigger -> IO ThreadId
+runCmdAsync initialState passThruData bwFunc mvar wxEvtTrigger =
   let rCmd = runCmd initialState passThruData bwFunc
-  in forkFinally rCmd onTerminate
+  in forkFinally rCmd (onTerminate mvar)
+  where
+  onTerminate mvar runCmdOutput = do
+    putMVar mvar runCmdOutput
+   -- ev <- Wx.createMyEvent
+  --  Wx.evtHandlerAddPendingEvent f ev
+    unThreadAsyncTrigger wxEvtTrigger
+    return ()
+
 
 -- | BuildWrapperState represents a command, take an initial state and evaluate a BuildWrapper function
 runCmd :: (?cl :: CabalLock) =>

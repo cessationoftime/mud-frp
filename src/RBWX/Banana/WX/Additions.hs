@@ -37,3 +37,31 @@ window2Selection mbW = do
 
 frameMax :: [Prop (Frame ())] -> IO (Frame ())
 frameMax props = frameEx (frameDefaultStyle .+. wxMAXIMIZE) props objectNull
+
+newtype ThreadAsyncTrigger = ThreadAsyncTrigger { unThreadAsyncTrigger :: IO ()}
+
+threadAsyncEventId = wxID_HIGHEST+1 -- the custom event ID
+threadAsyncEvent :: Event (Window a) (IO ())
+threadAsyncEvent = newEvent "threadAsyncEvent" threadAsyncGetOnEvent threadAsyncOnEvent
+
+threadAsyncOnEvent win io = evtHandlerOnMenuCommand win threadAsyncEventId io
+threadAsyncGetOnEvent win  = evtHandlerGetOnMenuCommand win threadAsyncEventId
+
+threadAsyncTrigger :: Frame () -> ThreadAsyncTrigger
+threadAsyncTrigger frame = ThreadAsyncTrigger $ createAsyncTrigger >>= (evtHandlerAddPendingEvent frame)
+ where createAsyncTrigger = commandEventCreate wxEVT_COMMAND_MENU_SELECTED threadAsyncEventId
+
+
+ {-
+gui = do f <- frame [text := "custom event sample"]
+         bt <- button f [text := "click to invoke a custom event"]
+         set f [layout := column 1 [hfill (widget bt)]]
+         set bt [on command := onClick f]
+         registerMyEvent f (putStrLn "The custom event is fired!!")
+         return ()
+         where
+         onClick f = do
+           ev <- createMyEvent
+           evtHandlerAddPendingEvent f ev
+           return ()
+-}
