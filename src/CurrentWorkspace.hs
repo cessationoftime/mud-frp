@@ -131,7 +131,6 @@ currentWorkspaceSetup frame1 eCreateWorkspace eOpenWorkspace eCreateProject eImp
     Event t (OutputFinalizeOpenProject) ->  Moment t (Event t (WorkspaceStateChange -> WorkspaceStateChange))
   processFinalizeOpenProject eCabalBuildInfos = do
     let (eLeft,eRight) = split eCabalBuildInfos
-    --reactimate $ (\e -> logWarningMsg ("processCabalBuildInfos success: " ++ (show e))) <$> eRight
     reactimate $ (\e -> logWarningMsg ("processCabalBuildInfos exception: " ++ (show e))) <$> eLeft
     return $ procRight <$> eRight
     where

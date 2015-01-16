@@ -161,7 +161,6 @@ loadProject wbData@(Noded frame1 workspacePanel workspaceTree auiManagerUpd butt
           treeCtrlSetItemPath workspaceTree newModNode (cabalDirectory </> fp)
           treeCtrlAddSubDirs workspaceTree newModNode
 
-    logWarningMsg $ show moduleFiles
     sequence_ $ addModule <$> moduleFiles
 
     let newWbData = Noded frame1 workspacePanel workspaceTree auiManagerUpd buttonCreateWS buttonOpenWS buttonCreateProject buttonImportProject wsNode (newProjNode:projNodes)

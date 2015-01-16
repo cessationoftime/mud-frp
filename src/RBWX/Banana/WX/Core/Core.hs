@@ -29,6 +29,7 @@ module RBWX.Banana.WX.Core.Core (
   ,ioAccumB
   ,ioAccumChanges
   ,ioOnChanges
+  ,ioFilterE
   ,ChainIO
   ,wxID_ANY
 ) where
@@ -43,6 +44,18 @@ import Control.Applicative
 import Control.Monad
 import Data.Maybe (isJust, catMaybes)
 import Data.Monoid (Monoid(..))
+
+ioFilterE :: Frameworks t =>
+  (a -> IO Bool) -> Event t a ->  Moment t (Event t a)
+ioFilterE func ev = do
+  (adder,handler) <- liftIO newAddHandler
+
+  let doIO aa = (func aa) >>= (\x -> if x then handler aa else return ())
+
+  reactimate $ doIO <$> ev
+  fromAddHandler adder
+
+
 
 
 -- | perform the IO on the given event, create a new event

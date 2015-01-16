@@ -12,6 +12,7 @@ import CurrentWorkspace
 import System.Environment (getArgs)
 import Control.Monad
 import CabalParsing
+import System.Directory (doesFileExist)
 -- TODO: Haskelletor
 
 -- TODO: create open workspace (*.n6)
@@ -87,16 +88,17 @@ networkDescription = do
     -- [[[[ AuiManager setup
   --  (auiEvent1 :: Event t [(Window (), Int, String)] ,addPanehandler) <- newEvent
 
-    browserPaneInfo <- liftIO $ auiPaneInfoCreateDefault
-    browserPaneInfo' <- liftIO $ auiPaneInfoDefaultPane browserPaneInfo
-    browserPaneInfo'' <- liftIO $ auiPaneInfoCaption browserPaneInfo' "Workspace Browser"
-    browserPaneInfo''' <- liftIO $ auiPaneInfoLeft browserPaneInfo''
-    browserPaneInfo'''' <- liftIO $ auiPaneInfoMinSize browserPaneInfo''' (sz 250 0)
+    browserPaneInfo <- liftIO $ (
+      do bPaneInfo <- auiPaneInfoCreateDefault
+         bPaneInfo' <- auiPaneInfoDefaultPane bPaneInfo
+         bPaneInfo'' <- auiPaneInfoCaption bPaneInfo' "Workspace Browser"
+         bPaneInfo''' <- auiPaneInfoLeft bPaneInfo''
+         auiPaneInfoMinSize bPaneInfo''' (sz 250 0))
 
     aui <- createAuiManager frame1
    -- auiManagerOutputs <- outputs aui []
     let addPane w b c =  withUnderlying aui (\a -> auiManagerAddPane a w b c >> return ())
-        addPaneBrowser w =  withUnderlying aui (\a -> auiManagerAddPaneByPaneInfo a w browserPaneInfo'''' >> return ())
+        addPaneBrowser w =  withUnderlying aui (\a -> auiManagerAddPaneByPaneInfo a w browserPaneInfo >> return ())
   --  let addPane b c w =  auiManagerAddPane aui w b c >> return ()
         auiManagerUpd = withUnderlying aui auiManagerUpdate
     -- finish wiring workspace browser GUI
@@ -129,8 +131,8 @@ networkDescription = do
         eTreeActivated :: Event t TreeItem
         eTreeActivated =  filterJust $ isTreeActivated <$> eWorkspaceTreeEvent
 
-    ebrowserOpenFile <- browserGetItemPath eTreeActivated bBrowserState
-    let notebookInputs = unions [(NewPage <$> eNewDialogOk),(OpenPage <$> (eOpenDialogOk `union` ebrowserOpenFile)),
+    eBrowserOpenFile <- (ioFilterE doesFileExist) =<< (browserGetItemPath eTreeActivated bBrowserState)
+    let notebookInputs = unions [(NewPage <$> eNewDialogOk),(OpenPage <$> (eOpenDialogOk `union` eBrowserOpenFile)),
                                  (Save <$ eSaveMenuItem),(SaveAll <$ eSaveAllMenuItem)]
 
 
