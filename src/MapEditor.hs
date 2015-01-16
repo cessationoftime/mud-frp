@@ -64,10 +64,10 @@ drawBlock dc activePos drawPos  =
 mapEditorIO :: forall t a. Frameworks t => Window a -> Moment t (Panel (), Event t ())
 mapEditorIO window = do
     -- Layout
-    t <- timer window [ interval   := 50 ]
-    mapEditorPanel <- panelM window []
-    contextMenu  <-  menuPane      [ text := "Context" ]
-    autoMenuItem  <- menuItem contextMenu      [ text := "Auto" ]
+    t <- liftIO $ timer window [ interval   := 50 ]
+    mapEditorPanel <- liftIO $ panel window []
+    contextMenu  <-  liftIO $ menuPane      [ text := "Context" ]
+    autoMenuItem  <- liftIO $ menuItem contextMenu      [ text := "Auto" ]
     wireupContextMenu mapEditorPanel contextMenu
     eAutoMenuItem <- event0 window $ menu autoMenuItem
     -- Events

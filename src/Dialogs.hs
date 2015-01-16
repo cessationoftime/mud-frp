@@ -13,7 +13,7 @@
 --
 -----------------------------------------------------------------------------
 
-module Dialogs (fileDialogOkEvent,fileDialogOkEventEx, DialogDescriptor(..), DialogOpenMode(..)) where
+module Dialogs (fileDialogOkEvent,fileDialogOkEventEx,simpleCustomDialog, DialogDescriptor(..), DialogOpenMode(..)) where
 import RBWX.RBWX
 import Data.Maybe
 import Control.Monad.Trans.Maybe
@@ -119,4 +119,15 @@ fileDialogOkEventEx fileMode fileName = eventFileDialogOk (show (fileMode :: Dia
 fileDialogOkEvent :: Frameworks t => DialogOpenMode -> String -> [DialogDescriptor] -> Window a -> Event t b -> Moment t (Event t FilePath)
 fileDialogOkEvent fileMode fileName dd w evb = do
  eve <- eventFileDialogOk (show (fileMode :: DialogOpenMode)) fileMode fileName dd w evb
- return $ snd <$> eve 
+ return $ snd <$> eve
+
+simpleCustomDialog :: Frame () -> IO ()
+simpleCustomDialog parentFrame = do
+  -- see example at  http://www.ugw.name/?p=512
+  d <- dialog parentFrame [text := "Title: SimpleCustomDialog"]
+  p <- panel d []
+  cb <- checkBox p [text := "SimpleCustomDialog"]
+  _ <- dialogShowModal d
+  return ()
+
+

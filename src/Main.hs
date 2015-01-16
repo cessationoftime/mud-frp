@@ -52,26 +52,26 @@ networkDescription = do
     frame1 <- liftIO $ frameMax [ text  := "Editor for the Functional Interactive Fiction Engine (E-FIFE)"
       , resizeable := True]
 
-    status <- statusField [text := "Loading MUD Editor"]
-    setM frame1 [statusBar := [status]]
+    status <- liftIO $ statusField [text := "Loading MUD Editor"]
+    liftIO $ set frame1 [statusBar := [status]]
 
     -- Menu layout
-    fileMenu  <- menuPane      [ text := "File" ]
-    newMenuItem   <- menuItem fileMenu [ text := "&New\tCtrl+N", help := "New file" ]
-    openMenuItem <- menuItem fileMenu [ text      := "&Open\tCtrl+O"
+    fileMenu  <- liftIO $ menuPane      [ text := "File" ]
+    newMenuItem   <- liftIO $   menuItem fileMenu [ text := "&New\tCtrl+N", help := "New file" ]
+    openMenuItem <- liftIO $  menuItem fileMenu [ text      := "&Open\tCtrl+O"
                            , help      := "Open file"
                --            , checkable := True
                            ]
 
-    saveMenuItem   <- menuItem fileMenu [ text := "&Save\tCtrl+S", help := "Save file" ]
-    saveAllMenuItem   <- menuItem fileMenu [ text := "SaveAll", help := "Save All Files" ]
+    saveMenuItem   <- liftIO $  menuItem fileMenu [ text := "&Save\tCtrl+S", help := "Save file" ]
+    saveAllMenuItem   <- liftIO $  menuItem fileMenu [ text := "SaveAll", help := "Save All Files" ]
 
-    doMenu  <- menuPane      [ text := "Do" ]
-    doItMenuItem   <- menuItem doMenu [ text := "Do It", help := "DoIt" ]
-    menuSub fileMenu doMenu []
+    doMenu  <- liftIO $ menuPane      [ text := "Do" ]
+    doItMenuItem   <- liftIO $  menuItem doMenu [ text := "Do It", help := "DoIt" ]
+    liftIO $ menuSub fileMenu doMenu []
 
-    menuLine fileMenu
-    quit  <- menuQuit fileMenu [help := "Quit the ide"]
+    liftIO $ menuLine fileMenu
+    quit  <- liftIO $  menuQuit fileMenu [help := "Quit the ide"]
 
     -- setup workspace browser GUI
     (eCreateWorkspace,eOpenWorkspace,eCreateProject,eImportProject,eWorkspaceTreeEvent, wireupWorkspaceBrowser) <- setupWorkspaceBrowser frame1
@@ -153,8 +153,8 @@ networkDescription = do
      -- TreeCtrl ]]]]
 
    -- set new   [on command := mainNetwork]
-    setM quit  [on command := close frame1]
-    setM frame1 [menuBar := [fileMenu]]
+    liftIO $ set quit  [on command := close frame1]
+    liftIO $ set frame1 [menuBar := [fileMenu]]
 
 
 
@@ -204,6 +204,7 @@ networkDescription = do
 
    -- reactimate $ (showFilePaths >>= logWarningMsg) <$ (unions [eDoItMenuButton,eAutoContextItem] )
 
+    reactimate $ (simpleCustomDialog frame1) <$ (unions [eDoItMenuButton,eAutoContextItem] )
 
   --      bTotal :: Behavior t Int
   --      bTotal = accumB 0 $ (+1) <$ eClosedNotebookPage
