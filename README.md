@@ -1,6 +1,12 @@
 mud-frp
 =======
 
+== investigate ==
+Scion-browser
+ghc-mod
+stylish-haskell
+
+
 == Git Clone with BuildWrapper submodule
 
 ```
