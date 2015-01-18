@@ -64,7 +64,7 @@ networkDescription = do
                            ]
 
     saveMenuItem   <- liftIO $  menuItem fileMenu [ text := "&Save\tCtrl+S", help := "Save file" ]
-    saveAllMenuItem   <- liftIO $  menuItem fileMenu [ text := "SaveAll", help := "Save All Files" ]
+    saveAllMenuItem   <- liftIO $  menuItem fileMenu [ text := "Save All", help := "Save All Files" ]
 
     doMenu  <- liftIO $ menuPane      [ text := "Do" ]
     doItMenuItem   <- liftIO $  menuItem doMenu [ text := "Do It", help := "DoIt" ]
@@ -140,7 +140,7 @@ networkDescription = do
     NotebookOutputs _ _ _ _ _ _
       eChangingNotebookPage
       eChangedNotebookPage eCloseNotebookPage eClosedNotebookPage eLastClose eLastClosed
-      bPages <- createNotebook frame1 notebookInputs (\n -> addPane (objectCast n) wxCENTER "Source Pane")
+      bPages bActiveNBPage <- createNotebook frame1 notebookInputs (\n -> addPane (objectCast n) wxCENTER "Source Pane")
 
      --  Notebook ]]]]
 
@@ -182,14 +182,7 @@ networkDescription = do
 
 
 
-    let bActiveNBPage = stepper Nothing (newPage `fmap` eChangedNotebookPage)
-    let eSaveNBPage :: Event t (Maybe NotebookPage) =  bActiveNBPage <@ eSaveMenuItem
 
-        doSave :: Maybe NotebookPage -> IO()
-        doSave (Just (SourceNotebookPage _ ctrl fp)) = styledTextCtrlSaveFile ctrl fp >> return ()
-        doSave Nothing = return ()
-
-    reactimate $ doSave <$> eSaveNBPage
 
     let showNBMaybe :: Maybe NotebookPage -> FilePath
         showNBMaybe (Just (SourceNotebookPage _ _ fp) ) = fp

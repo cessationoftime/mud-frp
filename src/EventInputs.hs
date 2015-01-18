@@ -18,7 +18,7 @@ import RBWX.RBWX
 import CabalParsing
 import Utility
 -------------- Notebook
-
+--
 type NotebookInput t = Event t NotebookChange
 data NotebookChange = NewPage FilePath | OpenPage FilePath | Save | SaveAll
 
@@ -29,6 +29,14 @@ justNewPage _ = Nothing
 justOpenPage :: NotebookChange ->  Maybe FilePath
 justOpenPage (OpenPage fp) = Just fp
 justOpenPage _ = Nothing
+
+filterSave :: NotebookChange ->  Bool
+filterSave Save = True
+filterSave _ = False
+
+filterSaveAll :: NotebookChange ->  Bool
+filterSaveAll SaveAll = True
+filterSaveAll _ = False
 
 -------------- WorkspaceBrowser
 
@@ -43,7 +51,7 @@ data WorkspaceBrowserChange = WorkspaceStateInit | StateChange WorkspaceState | 
 data ProjectState = CreateProjectState FilePath CabalPath |
                     ImportProjectState FilePath CabalPath (OpResult [CabalBuildInfo]) |
                     ProjectState FilePath CabalPath (OpResult [CabalBuildInfo]) deriving (Show)
-                    
+
 data WorkspaceState = WorkspaceStateLoading {workspaceFile :: FilePath} | WorkspaceState { workspaceFile :: FilePath, projects :: [ProjectState] } deriving (Show)
 
 data WorkspaceChangeType = WorkspaceChangeInit | OpenWorkspace FilePath | CloseWorkspace | OpenProject FilePath | CloseProject FilePath

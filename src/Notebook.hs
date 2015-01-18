@@ -12,7 +12,7 @@
 --
 -----------------------------------------------------------------------------
 {-# LANGUAGE Rank2Types #-}
-
+--
 module Notebook (
  createNotebook
 ,matchesNotebookPage
@@ -27,7 +27,7 @@ import RBWX.RBWX
 import System.FilePath
 import Data.List (find,partition)
 import Data.Maybe (fromJust,listToMaybe,maybeToList)
-import EventInputs (NotebookInput,NotebookChange (..), justOpenPage, justNewPage)
+import EventInputs (NotebookInput,NotebookChange (..), justOpenPage, justNewPage,filterSave,filterSaveAll)
 newNotebook :: Window a -> IO (AuiNotebook ())
 newNotebook frame1 = do
 -- create the notebook off-window to avoid flicker
@@ -136,7 +136,9 @@ data NotebookOutputs t = NotebookOutputs {
   -- | last page in the notebook has been closed, conducts the closed page
   lastClosedNoteBookPage :: Event t (Maybe NotebookPage),
   -- | pages currently in the notebook, and the last closed page
-  pages :: Behavior t ([NotebookPage],Maybe NotebookPage)
+  pages :: Behavior t ([NotebookPage],Maybe NotebookPage),
+  -- | the currently selected page
+  bActiveNBPage :: Behavior t (Maybe NotebookPage)
   }
 
 {-
@@ -161,6 +163,8 @@ outputs :: (?notebook :: AuiNotebook (), Frameworks t) =>
 outputs frame1 input = do
     let eNew = filterJust $ justNewPage <$> input
         eOpen = filterJust $ justOpenPage <$> input
+        eSave =  filterSave `filterE` input
+        eSaveAll = filterSaveAll `filterE` input
     eNewFileDialogNotebookPage :: Event t NotebookPage <- createSourcePage `mapIOreaction` eNew
     eNewNotebookPage :: Event t NotebookPage <- addEmptySourceTab `ioOnEvent`  eNewFileDialogNotebookPage
     eOpenFileDialogNotebookPage :: Event t NotebookPage <- createSourcePage `mapIOreaction` eOpen
@@ -226,6 +230,18 @@ outputs frame1 input = do
 
     reactimate $ setupDirtIndicator <$> eAddedNotebookPage
 
+    let bActiveNBPage = stepper Nothing (newPage `fmap` eChangedNotebookPage)
+
+        doSave :: NotebookPage -> IO ()
+        doSave (SourceNotebookPage _ ctrl fp) = styledTextCtrlSaveFile ctrl fp >> return ()
+
+        savePages :: [NotebookPage] -> IO ()
+        savePages pages = sequence_ $ doSave <$> pages
+
+    reactimate $ (savePages . maybeToList) <$> (bActiveNBPage <@ eSave)
+
+    reactimate $ (savePages . fst) <$> (bPages <@ eSaveAll)
+
     return $ NotebookOutputs eNewFileDialogNotebookPage eNewNotebookPage
                             eOpenFileDialogNotebookPage eOpenNotebookPage
                             eAddedNotebookPage eAddedNotebookPage
@@ -233,5 +249,5 @@ outputs frame1 input = do
                             eChangedNotebookPage
                             eCloseNotebookPage eClosedNotebookPage
                             eLastClose eLastClosed
-                            bPages
+                            bPages bActiveNBPage
 
