@@ -23,7 +23,8 @@ module RBWX.Banana.WX.Additions,
   eChangedNotebookPage,
   eChangingNotebookPage,
   eEventTreeCtrl,
-  newThreadAsyncEvent
+  newThreadAsyncEvent,
+  eSTCEvent
   --eNotebookPage,
   --eActiveNotebookPage,
   --bActiveNotebookPage
@@ -55,3 +56,6 @@ newThreadAsyncEvent eveId frame = do
   let (eve,trigger) = threadAsyncEvent eveId
   evet <- event0 frame eve
   return (evet,trigger frame)
+
+eSTCEvent ::  Frameworks t => StyledTextCtrl () -> Moment t (Event t EventSTC)
+eSTCEvent styledTextCtrl =  event1 styledTextCtrl stcEvent

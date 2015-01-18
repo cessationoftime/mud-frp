@@ -163,7 +163,3 @@ buildInfos pd =
     let libM = libBuildInfo <$> (maybeToList $ library pd) :: [BuildInfo]
         exeM = buildInfo <$> executables pd :: [BuildInfo]
     in libM ++ exeM
-
-
-
-

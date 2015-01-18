@@ -45,21 +45,53 @@ newNotebook frame1 = do
   return (notebook)
 
 
-createSourcePage :: AuiNotebook () -> FilePath -> IO NotebookPage
-createSourcePage notebook filePath = do
-  sourceEditorCtrl <- sourceEditor notebook []
+createSourcePage :: (?notebook :: AuiNotebook ()) =>
+  FilePath -> IO NotebookPage
+createSourcePage filePath = do
+  sourceEditorCtrl <- sourceEditor ?notebook []
   id <- windowGetId sourceEditorCtrl
   return $ SourceNotebookPage id sourceEditorCtrl filePath
 
-addEmptySourceTab :: AuiNotebook () -> NotebookPage -> IO ()
-addEmptySourceTab notebook (SourceNotebookPage id sourceEditorCtrl filePath) = do
-  _ <- auiNotebookAddPageWithBitmap notebook sourceEditorCtrl (takeFileName filePath) True nullBitmap
+addEmptySourceTab :: (?notebook :: AuiNotebook ()) =>
+  NotebookPage -> IO ()
+addEmptySourceTab snp@(SourceNotebookPage id sourceEditorCtrl filePath) = do
+  _ <- auiNotebookAddPageWithBitmap ?notebook sourceEditorCtrl (takeFileName filePath) True nullBitmap
   return ()
 
-addSourcePage :: AuiNotebook () -> NotebookPage -> IO ()
-addSourcePage notebook pg@(SourceNotebookPage _ sourceEditorCtrl filePath) = do
-  addEmptySourceTab notebook pg
+setupDirtIndicator :: (?notebook :: AuiNotebook ()) =>
+  NotebookPage -> IO ()
+setupDirtIndicator snp@(SourceNotebookPage id sourceEditorCtrl filePath) = do
+  set sourceEditorCtrl [on stcEvent := handler snp]
+  return ()
+  where
+  handler :: (?notebook :: AuiNotebook ()) =>
+    NotebookPage -> EventSTC -> IO ()
+  handler snp STCSavePointReached = lookForDirt snp
+  handler snp STCSavePointLeft = lookForDirt snp
+  handler snp STCChange = lookForDirt snp
+  handler _ _ = return ()
+
+  lookForDirt :: (?notebook :: AuiNotebook ()) =>
+   NotebookPage -> IO ()
+  lookForDirt snp@(SourceNotebookPage _ sourceEditorCtrl filePath) = do
+    mod <- styledTextCtrlGetModify sourceEditorCtrl
+    setTabText snp (takeFileName filePath ++ (if mod then "*" else ""))
+
+
+
+addSourcePage :: (?notebook :: AuiNotebook ()) =>
+ NotebookPage -> IO ()
+addSourcePage snp@(SourceNotebookPage _ sourceEditorCtrl filePath) = do
+  addEmptySourceTab snp
   sourceEditorLoadFile sourceEditorCtrl filePath
+  return ()
+
+
+setTabText :: (?notebook :: AuiNotebook ()) =>
+  NotebookPage -> String -> IO ()
+setTabText pg@(SourceNotebookPage _ sourceEditorCtrl filePath) newText = do
+  ind <- auiNotebookGetPageIndex ?notebook sourceEditorCtrl
+  _ <- auiNotebookSetPageText ?notebook ind newText
   return ()
 
 data NotebookPage = SourceNotebookPage WindowId SourceEditorCtrl FilePath
@@ -120,22 +152,23 @@ createNotebook :: (Frameworks t)  =>
 createNotebook frame1 input setupIO = do
     notebook <- liftIO $ newNotebook frame1
     liftIO $ setupIO notebook
-    outputs notebook frame1 input
+    let ?notebook = notebook
+     in outputs frame1 input
 
 --TODO: can we combine this with creation of the AuiNotebook itself?
-outputs :: Frameworks t =>
-   AuiNotebook () -> Frame () -> NotebookInput t -> Moment t (NotebookOutputs t)
-outputs notebook frame1 input = do
+outputs :: (?notebook :: AuiNotebook (), Frameworks t) =>
+   Frame () -> NotebookInput t -> Moment t (NotebookOutputs t)
+outputs frame1 input = do
     let eNew = filterJust $ justNewPage <$> input
         eOpen = filterJust $ justOpenPage <$> input
-    eNewFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eNew
-    eNewNotebookPage :: Event t NotebookPage <- (addEmptySourceTab notebook) `ioOnEvent`  eNewFileDialogNotebookPage
-    eOpenFileDialogNotebookPage :: Event t NotebookPage <- (createSourcePage notebook) `mapIOreaction` eOpen
-    eOpenNotebookPage :: Event t NotebookPage <- (addSourcePage notebook) `ioOnEvent` eOpenFileDialogNotebookPage
-    eCloseEventAuiNoteBook :: Event t EventAuiNotebook <- eCloseNotebookPage notebook
-    eClosedEventAuiNoteBook :: Event t EventAuiNotebook <- eClosedNotebookPage notebook
-    eChangingEventAuiNoteBook :: Event t EventAuiNotebook <- eChangingNotebookPage notebook
-    eChangedEventAuiNoteBook :: Event t EventAuiNotebook <- eChangedNotebookPage notebook
+    eNewFileDialogNotebookPage :: Event t NotebookPage <- createSourcePage `mapIOreaction` eNew
+    eNewNotebookPage :: Event t NotebookPage <- addEmptySourceTab `ioOnEvent`  eNewFileDialogNotebookPage
+    eOpenFileDialogNotebookPage :: Event t NotebookPage <- createSourcePage `mapIOreaction` eOpen
+    eOpenNotebookPage :: Event t NotebookPage <- addSourcePage `ioOnEvent` eOpenFileDialogNotebookPage
+    eCloseEventAuiNoteBook :: Event t EventAuiNotebook <- eCloseNotebookPage ?notebook
+    eClosedEventAuiNoteBook :: Event t EventAuiNotebook <- eClosedNotebookPage ?notebook
+    eChangingEventAuiNoteBook :: Event t EventAuiNotebook <- eChangingNotebookPage ?notebook
+    eChangedEventAuiNoteBook :: Event t EventAuiNotebook <- eChangedNotebookPage ?notebook
     let eAddNotebookPage  :: Event t NotebookPage = eNewFileDialogNotebookPage `union` eOpenFileDialogNotebookPage
         eAddedNotebookPage  :: Event t NotebookPage = eNewNotebookPage `union` eOpenNotebookPage
         eChangedNotebookPage  :: Event t AuiNotebookChange =
@@ -190,6 +223,8 @@ outputs notebook frame1 input = do
         -- | event when last page has closed
         eLastClosed :: Event t (Maybe NotebookPage)
         eLastClosed = whenE (bPageLeft 0) eClosedNotebookPage
+
+    reactimate $ setupDirtIndicator <$> eAddedNotebookPage
 
     return $ NotebookOutputs eNewFileDialogNotebookPage eNewNotebookPage
                             eOpenFileDialogNotebookPage eOpenNotebookPage

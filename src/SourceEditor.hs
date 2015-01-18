@@ -52,15 +52,21 @@ keywords = "as case class data default deriving do else hiding if import " ++
            "in infix infixl infixr instance let module newtype of qualified" ++
            "then type where"
 
-type SourceEditorCtrl = StyledTextCtrl ()
+type SourceEditorCtrl =  StyledTextCtrl ()
 
 -- | load file into the sourceEditor
 -- AKA wxHaskell's styledTextCtrlLoadFile
 sourceEditorLoadFile :: SourceEditorCtrl -> FilePath -> IO Bool
-sourceEditorLoadFile = styledTextCtrlLoadFile
+sourceEditorLoadFile sec fp = do
+  b <- styledTextCtrlLoadFile sec fp
+  styledTextCtrlSetSavePoint sec
+  return b
 
 sourceEditorSaveFile :: SourceEditorCtrl -> FilePath -> IO Bool
-sourceEditorSaveFile = styledTextCtrlSaveFile
+sourceEditorSaveFile sec fp = do
+  b <- styledTextCtrlSaveFile sec fp
+  styledTextCtrlSetSavePoint sec
+  return b
 
 
 -- | Show an saveFileDialog and get a FilePath. Save the file pointed to by
